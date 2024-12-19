@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: backend
+
+  security:
+    basic:
+      enabled: false
+
+  jpa:
+    generate-ddl: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: public
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://192.168.111.10:5432/hmws?characterEncoding=UTF-8
+    username: postgres
+    password: qw12qw!@
+
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+ad:
+  default:
+    password: "qw12qw!@"
+    email-domain: "hw.com"
+  userScript:
+    path: "C:\\Users\\woods\\development\\HMProject\\vdi_backend\\src\\main\\resources\\scripts\\crerateAdUser.ps1"
+  securityScript:
+    path: "C:\\Users\\woods\\development\\HMProject\\vdi_backend\\src\\main\\resources\\scripts\\setVmSecurity.ps1"
+  server:
+    ip: "192.168.111.10"
+  admin:
+    username: "administrator@hanbit.com"
+    password: "qw12qw!@"
+
+jwt:
+  secret: "thisissecretkeysomindyourownbusiness"
+  expiration-time: 3600000
+  refresh-token:
+    expiration-time: 604800
+
+server:
+  port: 8081

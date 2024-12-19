@@ -1,0 +1,101 @@
+Log initialization test: 11/17/2024 18:43:19
+2024-11-17 18:43:19: ERROR - ���� �߻�: 'Session' �Ű� ������ ���� �μ��� ��ȿ���� �˻��� �� �����ϴ�. �μ��� null�̰ų� ��� �ֽ��ϴ�. null�̰ų� ��� ���� ���� �μ��� �����ϰ� ������ �ٽ� �õ��Ͻʽÿ�.
+2024-11-17 18:43:19: ERROR - �� ����:    ��ġ: System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)
+   ��ġ: System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)
+   ��ġ: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+   ��ġ: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+2024-11-17 18:43:19: ERROR - ��ũ��Ʈ ���� ��ġ: ��ġ C:\Users\woods\development\HMProject\vdi_backend\src\main\resources\scripts\crerateAdUser.ps1:139 ����:29
++     Invoke-Command -Session $Session -ScriptBlock $scriptBlock -Argum ...
++                             ~~~~~~~~
+Log initialization test: 11/17/2024 18:48:10
+2024-11-17 18:48:11: ERROR - 오류 발생: 'Session' 매개 변수에 대한 인수의 유효성을 검사할 수 없습니다. 인수가 null이거나 비어 있습니다. null이거나 비어 있지 않은 인수를 제공하고 명령을 다시 시도하십시오.
+2024-11-17 18:48:11: ERROR - 상세 오류:    위치: System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)
+   위치: System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)
+   위치: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+   위치: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+2024-11-17 18:48:11: ERROR - 스크립트 실행 위치: 위치 C:\Users\woods\development\HMProject\vdi_backend\src\main\resources\scripts\crerateAdUser.ps1:142 문자:29
++     Invoke-Command -Session $Session -ScriptBlock $scriptBlock -Argum ...
++                             ~~~~~~~~
+Log initialization test: 11/17/2024 18:51:15
+2024-11-17 18:51:15: ERROR - 원격 세션 생성 실패: 다음 오류 때문에 원격 서버 192.168.111.10에 연결하지 못했습니다. WinRM 클라이언트에서 요청을 처리할 수 없습니다. 인증 체계가 Kerberos와 다르거나 클라이언트 컴퓨터가 도메인에 가입되어 있지 않을 경우 HTTPS 전송을 사용하거나 대상 컴퓨터를 TrustedHosts 구성 설정에 추가해야 합니다. TrustedHosts를 구성하려면 winrm.cmd를 사용하십시오. TrustedHosts 목록에 있는 컴퓨터는 인증되지 않았을 수 있습니다. 자세한 내용을 보려면 winrm help config 명령을 실행하십시오. 자세한 내용은 about_Remote_Troubleshooting 도움말 항목을 참조하십시오.
+2024-11-17 18:51:15: ERROR - 오류 발생: 다음 오류 때문에 원격 서버 192.168.111.10에 연결하지 못했습니다. WinRM 클라이언트에서 요청을 처리할 수 없습니다. 인증 체계가 Kerberos와 다르거나 클라이언트 컴퓨터가 도메인에 가입되어 있지 않을 경우 HTTPS 전송을 사용하거나 대상 컴퓨터를 TrustedHosts 구성 설정에 추가해야 합니다. TrustedHosts를 구성하려면 winrm.cmd를 사용하십시오. TrustedHosts 목록에 있는 컴퓨터는 인증되지 않았을 수 있습니다. 자세한 내용을 보려면 winrm help config 명령을 실행하십시오. 자세한 내용은 about_Remote_Troubleshooting 도움말 항목을 참조하십시오.
+2024-11-17 18:51:15: ERROR - 상세 오류: 
+2024-11-17 18:51:15: ERROR - 스크립트 실행 위치: 위치 C:\Users\woods\development\HMProject\vdi_backend\src\main\resources\scripts\crerateAdUser.ps1:111 문자:20
++ ...  $Session = New-PSSession -ComputerName $ADServer -Credential $Creden ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Log initialization test: 11/17/2024 18:55:38
+2024-11-17 18:55:39: ERROR - 오류 발생: Invalid OU Path: OU=Users,DC=hanbit,DC=com
+2024-11-17 18:55:39: ERROR - 상세 오류:    위치: System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)
+   위치: System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)
+   위치: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+   위치: System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+2024-11-17 18:55:39: ERROR - 스크립트 실행 위치: 위치 C:\Users\woods\development\HMProject\vdi_backend\src\main\resources\scripts\crerateAdUser.ps1:178 문자:5
++     Invoke-Command -Session $Session -ScriptBlock $scriptBlock -Argum ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Log initialization test: 11/17/2024 18:58:44
+Log initialization test: 11/17/2024 19:21:10
+Log initialization test: 11/17/2024 19:28:43
+Log initialization test: 11/17/2024 19:35:18
+Log initialization test: 11/17/2024 19:42:17
+Log initialization test: 11/17/2024 19:46:16
+Log initialization test: 11/17/2024 19:48:52
+Log initialization test: 11/17/2024 19:52:31
+Log initialization test: 11/17/2024 19:55:56
+Log initialization test: 11/17/2024 19:57:11
+Log initialization test: 11/17/2024 19:59:10
+Log initialization test: 11/17/2024 20:28:24
+Log initialization test: 11/17/2024 20:30:53
+Log initialization test: 11/17/2024 20:31:26
+Log initialization test: 11/17/2024 20:38:20
+Log initialization test: 11/24/2024 18:50:11
+Log initialization test: 11/24/2024 18:54:55
+Log initialization test: 11/24/2024 19:01:12
+Log initialization test: 11/24/2024 19:59:44
+Log initialization test: 11/24/2024 20:06:25
+Log initialization test: 11/24/2024 20:11:21
+Log initialization test: 11/24/2024 20:20:08
+Log initialization test: 11/24/2024 20:27:14
+Log initialization test: 11/24/2024 20:46:17
+Log initialization test: 11/24/2024 20:55:12
+Log initialization test: 11/24/2024 21:01:11
+Log initialization test: 11/24/2024 21:02:12
+Log initialization test: 11/24/2024 21:04:30
+Log initialization test: 11/24/2024 21:07:29
+Log initialization test: 11/24/2024 21:35:11
+Log initialization test: 11/24/2024 21:42:33
+Log initialization test: 11/25/2024 21:37:50
+Log initialization test: 11/25/2024 21:40:48
+Log initialization test: 11/25/2024 21:44:28
+Log initialization test: 11/25/2024 21:47:04
+Log initialization test: 11/25/2024 21:51:39
+Log initialization test: 11/25/2024 22:13:22
+Log initialization test: 11/25/2024 22:16:07
+Log initialization test: 11/25/2024 22:18:31
+Log initialization test: 11/25/2024 22:21:53
+Log initialization test: 11/25/2024 22:24:26
+Log initialization test: 11/25/2024 22:30:02
+Log initialization test: 11/25/2024 22:30:52
+Log initialization test: 11/25/2024 22:38:32
+Log initialization test: 11/25/2024 22:40:59
+Log initialization test: 11/25/2024 22:46:20
+Log initialization test: 11/25/2024 22:48:29
+Log initialization test: 11/25/2024 22:51:44
+Log initialization test: 11/25/2024 23:00:34
+Log initialization test: 11/25/2024 23:01:39
+Log initialization test: 11/25/2024 23:04:58
+Log initialization test: 11/28/2024 19:50:18
+Log initialization test: 12/05/2024 20:11:19
+Log initialization test: 12/05/2024 20:18:04
+Log initialization test: 12/05/2024 20:50:15
+Log initialization test: 12/05/2024 20:50:41
+Log initialization test: 12/05/2024 20:51:56
+Log initialization test: 12/05/2024 21:11:15
+Log initialization test: 12/08/2024 18:53:34
+Log initialization test: 12/11/2024 20:36:26
+Log initialization test: 12/14/2024 18:31:44
+Log initialization test: 12/14/2024 20:56:25
+Log initialization test: 12/14/2024 21:05:00
+Log initialization test: 12/14/2024 21:05:44
+Log initialization test: 12/17/2024 21:14:11
+Log initialization test: 12/19/2024 20:24:32
+Log initialization test: 12/19/2024 20:30:10
