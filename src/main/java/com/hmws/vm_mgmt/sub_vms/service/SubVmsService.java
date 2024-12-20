@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,9 +30,11 @@ public class SubVmsService {
 
     private final UserDataRepository userDataRepository;
 
-    private final String baseVmxTemplatePath = "C:\\vm_base_template\\template.vmx";
+    @Value("${ad.baseVmxTemplate.path}")
+    private String baseVmxTemplatePath;
 
-    private final String vmCreatedIn = "C:\\win2022";
+    @Value("${ad.vmCreatedIn.path}")
+    private String vmCreatedIn;
 
     @Value("${ad.server.ip}")
     private String adServerIp;
@@ -115,27 +118,27 @@ public class SubVmsService {
 
     }
 
-    public void setVmSecurity(String userId) throws IOException, InterruptedException{
-
+    public void setVmSecurity(String userId) throws IOException, InterruptedException {
         UserData user = userDataRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // VM 이름 가져오기 (가장 최근에 생성된 VM)
         SubVms subVm = subVmsRepository.findByUserData_UserId(userId)
-                .orElseThrow(() -> new RuntimeException("생성된 VM을 찾을 수 없습니다"));
+                .orElseThrow(() -> new RuntimeException("Created VM not found"));
 
-        log.info("VM 보안 설정 시작 - 사용자: {}, OU: {}, SG: {}, AD서버: {}",
+        log.info("Starting VM security configuration - User: {}, OU: {}, SG: {}, AD Server: {}",
                 userId,
                 user.getOrganizationalUnitPath(),
                 user.getSecurityGroup(),
                 adServerIp);
 
+        String vmxPath = Paths.get(vmCreatedIn, subVm.getSubVmName(),
+                subVm.getSubVmName() + ".vmx").toString();
 
         ProcessBuilder pb = new ProcessBuilder(
                 "powershell.exe",
                 "-ExecutionPolicy", "Bypass",
                 "-File", adSecurityScriptPath,
-                "-VmPath", vmCreatedIn,
+                "-VmxPath", vmxPath,
                 "-UserId", userId,
                 "-AdminUsername", adAdminUsername,
                 "-AdminPassword", adAdminPassword,
@@ -148,22 +151,56 @@ public class SubVmsService {
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
-        // 실시간으로 PowerShell 출력 로깅
         StringBuilder output = new StringBuilder();
+        boolean securityConfigCompleted = false;
+        boolean hasErrors = false;
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
-                log.info("PowerShell 출력: {}", line);
+                log.info("PowerShell output: {}", line);
+
+                // 성공 여부 확인
+                if (line.contains("VM security configuration completed")) {
+                    securityConfigCompleted = true;
+                }
+
+                // 오류 검사
+                if (line.contains("Error") ||
+                        line.contains("failed") ||
+                        line.contains("exception") ||
+                        line.contains("ParserError") ||
+                        line.contains("Missing terminator") ||
+                        line.contains("Missing closing '}'") ||
+                        line.contains("TerminatorExpectedAtEndOfString") ||
+                        line.contains("The running command stopped") ||
+                        line.contains("Cannot connect to") ||
+                        line.contains("Access is denied")) {
+                    hasErrors = true;
+                    log.error("Error detected in PowerShell output: {}", line);
+                }
             }
         }
 
         int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            log.error("VM 보안 설정 실패 - 종료 코드: {}, 전체 출력:\n{}", exitCode, output.toString());
-            throw new RuntimeException("VM 보안 설정 실패 - PowerShell 스크립트 오류");
+        String outputStr = output.toString();
+
+        // 실패 조건 검사
+        if (exitCode != 0 || hasErrors || !securityConfigCompleted) {
+            String errorMessage = String.format(
+                    "VM security configuration failed:%n" +
+                            "Exit Code: %d%n" +
+                            "Has Errors: %b%n" +
+                            "Configuration Completed: %b%n" +
+                            "Full Output:%n%s",
+                    exitCode, hasErrors, securityConfigCompleted, outputStr
+            );
+
+            log.error(errorMessage);
+            throw new RuntimeException(errorMessage);
         }
 
-        log.info("VM 보안 설정 완료 - 사용자: {}", userId);
+        log.info("VM security configuration successfully completed - User: {}", userId);
     }
 }

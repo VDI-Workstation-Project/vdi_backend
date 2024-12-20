@@ -34,9 +34,13 @@ ad:
     password: "qw12qw!@"
     email-domain: "hw.com"
   userScript:
-    path: "C:\\Users\\woods\\development\\HMProject\\vdi_backend\\src\\main\\resources\\scripts\\crerateAdUser.ps1"
+    path: "C:\\vm_scripts\\createAdUser.ps1"
   securityScript:
-    path: "C:\\Users\\woods\\development\\HMProject\\vdi_backend\\src\\main\\resources\\scripts\\setVmSecurity.ps1"
+    path: "C:\\vm_scripts\\setVmSecurity2.ps1"
+  baseVmxTemplate:
+    path: "C:\\vm_base_template\\template.vmx"
+  vmCreatedIn:
+    path: "C:\\win2022"
   server:
     ip: "192.168.111.10"
   admin:
