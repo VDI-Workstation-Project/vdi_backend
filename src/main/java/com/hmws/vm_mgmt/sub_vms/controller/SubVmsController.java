@@ -37,11 +37,17 @@ public class SubVmsController {
                     createdVm.getSubVmStatus());
 
 
+            subVmsService.vmRegistration(userId);
+            log.info("VM AD 등록 완료 - VM명: {}, OU: {}, SecurityGroup: {}",
+                    createdVm.getSubVmName(),
+                    createdVm.getUserData().getOrganizationalUnitPath(),
+                    createdVm.getUserData().getSecurityGroup());
+
             subVmsService.setVmSecurity(userId);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "message", "VM 생성이 완료되었습니다",
+                    "message", "VM 생성 및 AD 등록이 완료되었습니다",
                     "data", Map.of(
                             "vmName", createdVm.getSubVmName(),
                             "status", createdVm.getSubVmStatus()

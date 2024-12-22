@@ -39,14 +39,23 @@ public class SubVmsService {
     @Value("${ad.server.ip}")
     private String adServerIp;
 
+    @Value("${ad.addVmToAdScript.path}")
+    private String addVmToAdScriptPath;
+
     @Value("${ad.securityScript.path}")
-    private String adSecurityScriptPath;
+    private String securityScriptPath;
 
     @Value("${ad.admin.username}")
     private String adAdminUsername;
 
+    @Value("${ad.admin.userInteractive}")
+    private String adAdminUserInteractive;
+
     @Value("${ad.admin.password}")
     private String adAdminPassword;
+
+    @Value("${ad.vmRun.path}")
+    private String vmRunPath;
 
     @Transactional
     public SubVms createVm(String userId) throws IOException {
@@ -118,14 +127,14 @@ public class SubVmsService {
 
     }
 
-    public void setVmSecurity(String userId) throws IOException, InterruptedException {
+    public void vmRegistration(String userId) throws IOException, InterruptedException {
         UserData user = userDataRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         SubVms subVm = subVmsRepository.findByUserData_UserId(userId)
                 .orElseThrow(() -> new RuntimeException("Created VM not found"));
 
-        log.info("Starting VM security configuration - User: {}, OU: {}, SG: {}, AD Server: {}",
+        log.info("Starting AD registration - User: {}, OU: {}, SG: {}, AD Server: {}",
                 userId,
                 user.getOrganizationalUnitPath(),
                 user.getSecurityGroup(),
@@ -137,7 +146,7 @@ public class SubVmsService {
         ProcessBuilder pb = new ProcessBuilder(
                 "powershell.exe",
                 "-ExecutionPolicy", "Bypass",
-                "-File", adSecurityScriptPath,
+                "-File", addVmToAdScriptPath,
                 "-VmxPath", vmxPath,
                 "-UserId", userId,
                 "-AdminUsername", adAdminUsername,
@@ -152,7 +161,7 @@ public class SubVmsService {
         Process process = pb.start();
 
         StringBuilder output = new StringBuilder();
-        boolean securityConfigCompleted = false;
+        boolean registrationCompleted = false;
         boolean hasErrors = false;
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -162,19 +171,14 @@ public class SubVmsService {
                 log.info("PowerShell output: {}", line);
 
                 // 성공 여부 확인
-                if (line.contains("VM security configuration completed")) {
-                    securityConfigCompleted = true;
+                if (line.contains("VM AD registration completed")) {
+                    registrationCompleted = true;
                 }
 
                 // 오류 검사
                 if (line.contains("Error") ||
-                        line.contains("failed") ||
+                        line.contains("failed") && !line.contains("failed to load external entity") ||
                         line.contains("exception") ||
-                        line.contains("ParserError") ||
-                        line.contains("Missing terminator") ||
-                        line.contains("Missing closing '}'") ||
-                        line.contains("TerminatorExpectedAtEndOfString") ||
-                        line.contains("The running command stopped") ||
                         line.contains("Cannot connect to") ||
                         line.contains("Access is denied")) {
                     hasErrors = true;
@@ -187,20 +191,121 @@ public class SubVmsService {
         String outputStr = output.toString();
 
         // 실패 조건 검사
-        if (exitCode != 0 || hasErrors || !securityConfigCompleted) {
+        if (exitCode != 0 || hasErrors || !registrationCompleted) {
             String errorMessage = String.format(
-                    "VM security configuration failed:%n" +
+                    "VM AD registration failed:%n" +
                             "Exit Code: %d%n" +
                             "Has Errors: %b%n" +
-                            "Configuration Completed: %b%n" +
+                            "Registration Completed: %b%n" +
                             "Full Output:%n%s",
-                    exitCode, hasErrors, securityConfigCompleted, outputStr
+                    exitCode, hasErrors, registrationCompleted, outputStr
             );
 
             log.error(errorMessage);
             throw new RuntimeException(errorMessage);
         }
 
-        log.info("VM security configuration successfully completed - User: {}", userId);
+        log.info("VM AD registration successfully completed - User: {}, VM: {}", userId, subVm.getSubVmName());
+    }
+
+    public void setVmSecurity(String userId) {
+        UserData user = userDataRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        SubVms subVm = subVmsRepository.findByUserData_UserId(userId)
+                .orElseThrow(() -> new RuntimeException("Created VM not found"));
+
+        String vmxPath = Paths.get(vmCreatedIn, subVm.getSubVmName(),
+                subVm.getSubVmName() + ".vmx").toString();
+
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                    "powershell.exe",
+                    "-ExecutionPolicy", "Bypass",
+                    "-File", securityScriptPath,
+                    "-VmxPath", vmxPath,
+                    "-AdminUsername", adAdminUserInteractive,
+                    "-AdminPassword", adAdminPassword,
+                    "-SecurityGroupName", user.getSecurityGroup(),
+                    "-VmRunPath", vmRunPath
+            );
+
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("PowerShell output: {}", line);
+                }
+            }
+
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                throw new RuntimeException("VM 보안 설정 실패. Exit code: " + exitCode);
+            }
+
+            log.info("VM 보안 설정이 완료되었습니다. VM: {}", subVm.getSubVmName());
+        } catch (Exception e) {
+            log.error("VM 보안 설정 중 오류 발생", e);
+            throw new RuntimeException("VM 보안 설정 실패", e);
+        }
+    }
+
+    private void startVm(String vmPath) {
+        try {
+            // VM을 백그라운드에서 시작
+            Process process = Runtime.getRuntime().exec(new String[]{vmRunPath, "-T", "ws", "start", vmPath, "nogui"});
+            process.waitFor(); // 프로세스가 완료될 때까지 대기
+            System.out.println("startcheck");
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopVm(String vmPath) {
+        try {
+            // VM 전원 끄기
+            Process process = Runtime.getRuntime().exec(new String[]{vmRunPath, "-T", "ws", "stop", vmPath, "hard"});
+            process.waitFor(); // 프로세스가 완료될 때까지 대기
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isVmPoweredOn(String vmxPath) {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{vmRunPath, "-T", "ws", "list", vmxPath});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String state1 = reader.readLine();
+            String state2 = reader.readLine();
+
+            return vmxPath.equals(state2); // 상태가 "poweredOn"이면 true 반환
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false; // 오류 발생 시 false 반환
+        }
+    }
+
+    private boolean isVmPoweredOff(String vmPath) {
+
+        boolean isPoweredOff = false;
+
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{vmRunPath, "-T", "ws", "list", vmPath});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String state1 = reader.readLine();
+            String state2 = reader.readLine();
+
+            if (state2 == null) {
+                isPoweredOff = true;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false; // 오류 발생 시 false 반환
+        }
+        return isPoweredOff;
     }
 }

@@ -35,16 +35,21 @@ ad:
     email-domain: "hw.com"
   userScript:
     path: "C:\\vm_scripts\\createAdUser.ps1"
+  addVmToAdScript:
+    path: "C:\\vm_scripts\\addVmToAd.ps1"
   securityScript:
-    path: "C:\\vm_scripts\\setVmSecurity2.ps1"
+    path: "C:\\vm_scripts\\setVmSecurity.ps1"
   baseVmxTemplate:
     path: "C:\\vm_base_template\\template.vmx"
   vmCreatedIn:
     path: "C:\\win2022"
+  vmRun:
+    path: "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe"
   server:
     ip: "192.168.111.10"
   admin:
     username: "administrator@hanbit.com"
+    userInteractive: "administrator"
     password: "qw12qw!@"
 
 jwt:

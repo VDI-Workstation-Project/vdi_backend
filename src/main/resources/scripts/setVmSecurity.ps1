@@ -2,161 +2,174 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$VmxPath,
     [Parameter(Mandatory=$true)]
-    [string]$UserId,
-    [Parameter(Mandatory=$true)]
     [string]$AdminUsername,
     [Parameter(Mandatory=$true)]
     [string]$AdminPassword,
     [Parameter(Mandatory=$true)]
-    [string]$OUPath,
-    [Parameter(Mandatory=$true)]
     [string]$SecurityGroupName,
     [Parameter(Mandatory=$true)]
-    [string]$ADServer,
-    [Parameter(Mandatory=$true)]
-    [string]$VmName
+    [string]$VmRunPath
 )
 
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 
-function Start-VMInBackground {
-   param([string]$VmxPath)
-    Write-Verbose "Starting VM in headless mode: $VmxPath"
-   # 새로운 방식으로 시도
-   Start-Process -FilePath 'C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe' `
-                -ArgumentList "-q", "-X", "`"$VmxPath`"" `
-                -WindowStyle Hidden `
-                -NoNewWindow
-   
-   # VM 부팅 대기 시간
-   Write-Verbose "Waiting for VM to boot..."
-   Start-Sleep -Seconds 30
-
-function Wait-ForDomainJoin {
+function Wait-VMToolsReady {
     param (
-        [string]$ComputerName,
-        [int]$MaxAttempts = 6,
-        [int]$DelaySeconds = 5
+        [string]$VmxPath,
+        [string]$VmRunPath,
+        [int]$TimeoutSeconds = 180
     )
 
-    for ($i = 1; $i -le $MaxAttempts; $i++) {
-        Write-Verbose "Checking domain join status attempt $i/$MaxAttempts"
-        try {
-            $result = Test-ComputerSecureChannel -Server $ComputerName
-            if ($result) {
-                Write-Verbose "Domain join confirmed"
-                return $true
-            }
+    Write-Verbose "Waiting for VMware Tools to be ready..."
+    $startTime = Get-Date
+
+    while ($true) {
+        $toolsStatus = & $VmRunPath -T ws checkToolsState $VmxPath 2>&1
+
+        if ($toolsStatus -like "*running*") {
+            Write-Verbose "VMware Tools is running"
+            return $true
         }
-        catch {
-            Write-Verbose "Domain join still in progress..."
+
+        if (((Get-Date) - $startTime).TotalSeconds -gt $TimeoutSeconds) {
+            throw "Timeout waiting for VMware Tools to be ready"
         }
-        if ($i -lt $MaxAttempts) {
-            Start-Sleep -Seconds $DelaySeconds
-        }
+
+        Start-Sleep -Seconds 5
     }
-    throw "Domain join verification timeout"
 }
 
 try {
-    Write-Verbose "Script started - Checking parameters"
-    Write-Verbose "VmxPath: $VmxPath"
-    Write-Verbose "UserId: $UserId"
-    Write-Verbose "OUPath: $OUPath"
-    Write-Verbose "SecurityGroupName: $SecurityGroupName"
-    Write-Verbose "VmName: $VmName"
-
-    # VM 시작
-    Start-VMInBackground -VmxPath $VmxPath
-
-    $SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
-    $Credential = New-Object System.Management.Automation.PSCredential($AdminUsername, $SecurePassword)
-
-    if (-not (Test-Connection -ComputerName $ADServer -Count 1 -Quiet)) {
-        throw "Cannot connect to AD server ($ADServer)"
+    # VM 시작 전 상태 확인
+    $vmState = & $VmRunPath -T ws list | Select-String -Pattern $VmxPath
+    if ($vmState) {
+        Write-Verbose "VM is already running. Attempting to stop..."
+        & $VmRunPath -T ws stop $VmxPath soft
+        Start-Sleep -Seconds 10
     }
 
-    $ADSession = New-PSSession -ComputerName $ADServer -Credential $Credential
+    # VM 시작 시도
+    Write-Verbose "Starting VM..."
+    $startResult = &$VmRunPath -T ws start $VmxPath nogui 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to start VM: $startResult"
+    }
 
-    $groupSID = Invoke-Command -Session $ADSession -ScriptBlock {
-        param($VmName, $OUPath, $SecurityGroupName)
+    # VMware Tools 상태 확인 및 대기
+    if (-not (Wait-VMToolsReady -VmxPath $VmxPath -VmRunPath $VmRunPath)) {
+        throw "Failed to detect running VMware Tools"
+    }
 
-        Import-Module ActiveDirectory
+    # Tools가 실행된 후 추가 대기 시간
+    Write-Verbose "Waiting additional time for system services..."
+    Start-Sleep -Seconds 30
 
-        try {
-            $computerExists = Get-ADComputer -Filter {Name -eq $VmName} -ErrorAction SilentlyContinue
-            if ($computerExists) {
-                Remove-ADComputer -Identity $VmName -Confirm:$false -ErrorAction Stop
-            }
+    # VM에서 보안 설정 스크립트 실행
+    Write-Verbose "Running security settings script..."
 
-            New-ADComputer -Name $VmName -Path $OUPath -Enabled $true
-            Add-ADGroupMember -Identity $SecurityGroupName -Members "$VmName$"
+    #    # 스크립트 파일 존재 여부 확인 부분 수정
+    #    Write-Verbose "Checking if script file exists..."
+    #    $checkScript = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    #    "-Command `"Write-Host (Test-Path 'C:\Scripts\security_settings.ps1'); exit (if(Test-Path 'C:\Scripts\security_settings.ps1') { 0 } else { 1 })`"" 2>&1
+    #
+    #    Write-Verbose "Check script result: $checkScript"
+    #
+    #    if ($LASTEXITCODE -ne 0) {
+    #        # 디버깅을 위한 추가 정보 수집
+    #        Write-Verbose "Checking Scripts directory..."
+    #        $dirCheck = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    #        "-Command `"Get-ChildItem 'C:\Scripts' | Select-Object Name, Length, LastWriteTime | Format-List`"" 2>&1
+    #
+    #        Write-Verbose "Directory contents: $dirCheck"
+    #        throw "Security settings script not found. Exit code: $LASTEXITCODE, Output: $checkScript"
+    #    }
 
-            $group = Get-ADGroup -Identity $SecurityGroupName
-            return $group.SID.Value
-        }
-        catch {
-            Write-Error "Error during AD operations: $($_.Exception.Message)"
-            throw
-        }
-    } -ArgumentList $VmName, $OUPath, $SecurityGroupName
+    #    # 스크립트 실행 권한 확인
+    #    Write-Verbose "Checking script execution policy..."
+    #    $policyResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    #        "-Command `"Get-ExecutionPolicy`"" 2>&1
+    #
+    #    Write-Verbose "Current execution policy: $policyResult"
 
-    Remove-PSSession $ADSession
+    # 실행 정책 변경
+#    Write-Verbose "Setting ExecutionPolicy to Unrestricted..."
+#
+#
+#    $unRestrictPolicyResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command
+#    "Set-ExecutionPolicy Unrestricted -Scope Process -Force" 2>&1
+#    # 실행 결과를 출력
+#    Write-Verbose $unRestrictPolicyResult
+#    # 실행 정책 변경
+#    Write-Verbose "Setting ExecutionPolicy to Unrestricted..."
+#
+#    $unRestrictPolicyResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command
+#    "Set-ExecutionPolicy Unrestricted -Scope Process -Force" 2>&1
+#    # 실행 결과를 출력
+#    Write-Verbose $unRestrictPolicyResult
+#    # 실행 정책 변경
+#    Write-Verbose "Setting ExecutionPolicy to Unrestricted..."
+#
+#    $unRestrictPolicyResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command
+#    "Set-ExecutionPolicy Unrestricted -Scope Process -Force" 2>&1
+#    # 실행 결과를 출력
+#    Write-Verbose $unRestrictPolicyResult
+#
+#
+#    # 결과 확인 로그
+#    Write-Verbose "ExecutionPolicy change result: $unRestrictPolicyResult"
 
-    Wait-ForDomainJoin -ComputerName $VmName
+    # 보안 설정 스크립트 실행
+    Write-Verbose "Executing security settings script..."
 
-    Write-Verbose "Attempting to connect to VM: $VmName"
-    $VMSession = New-PSSession -ComputerName $VmName -Credential $Credential
+    $scriptResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword `
+    runProgramInGuest $VmxPath `
+    C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe `
+    "Set-ExecutionPolicy"` Bypass `
+    C:\Scripts\security_settings.ps1 -SecurityGroupName $SecurityGroupName -Verbose` 2>&1
 
-    $result = Invoke-Command -Session $VMSession -ScriptBlock {
-        param($SecurityGroupSID)
+    Write-Verbose "Script execution result: $scriptResult"
 
-        try {
-            $tempPath = "$env:TEMP\secpol.inf"
-            $secDB = "$env:TEMP\secpol.sdb"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Security settings script failed with exit code $LASTEXITCODE : $scriptResult"
+    }
 
-            secedit /export /cfg $tempPath
+    # 스크립트 실행 결과 확인
+    Write-Verbose "Verifying security settings..."
+    $verifyResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runProgramInGuest $VmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    "-Command `"if (!(Get-LocalGroup -Name '$SecurityGroupName' -ErrorAction SilentlyContinue)) { exit 1 }`"" 2>&1
 
-            $content = Get-Content $tempPath
-            $content = $content -replace "SeInteractiveLogonRight = (.*)", "SeInteractiveLogonRight = *S-1-5-32-544,$SecurityGroupSID"
-            $content = $content -replace "SeNetworkLogonRight = (.*)", "SeNetworkLogonRight = *S-1-5-32-544,$SecurityGroupSID"
-            $content | Set-Content $tempPath -Force
+    if ($LASTEXITCODE -ne 0) {
+        throw "Security settings verification failed: Security group not found"
+    }
 
-            secedit /configure /db $secDB /cfg $tempPath /areas USER_RIGHTS
-            gpupdate /force
+    # 스크립트 파일 정리
+    Write-Verbose "Cleaning up script files..."
+    $cleanupResult = & $VmRunPath -T ws -gu $AdminUsername -gp $AdminPassword runPrVmxPath C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    "-Command `"Remove-Item -Path 'C:\Scripts\security_settings.ps1' -Force; Remove-Item -Path 'C:\Scripts' -Force`"" 2>&1
 
-            Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
-            Remove-Item $secDB -Force -ErrorAction SilentlyContinue
-
-            Write-Host "VM security configuration completed"
-            return $true
-        }
-        catch {
-            Write-Error "Error setting security policy: $($_.Exception.Message)"
-            return $false
-        }
-    } -ArgumentList $groupSID
-
-    Remove-PSSession $VMSession
-
-    if (-not $result) {
-        throw "VM security policy configuration failed"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cleanup failed: $cleanupResult"
     }
 
     # VM 종료
-    & 'C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe' -q $VmxPath
+    Write-Verbose "VM shutdown in progress..."
+    & $VmRunPath -T ws stop $VmxPath soft
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to shutdown VM"
+    }
 
+    Write-Host "VM security settings completed and cleanup finished."
     exit 0
 }
 catch {
-    Write-Error "VM security setup failed: $($_.Exception.Message)"
-    Write-Error "Error location: $($_.InvocationInfo.PositionMessage)"
-    Write-Error "Stack trace: $($_.ScriptStackTrace)"
+    Write-Error "Error during VM security settings: $($_.Exception.Message)"
+    Write-Error "Stack Trace: $($_.ScriptStackTrace)"
 
-    # 오류 발생 시 VM 강제 종료 시도
-    if ($VmxPath) {
-        & 'C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe' -q $VmxPath
+    try {
+        & $VmRunPath -T ws stop $VmxPath hard
+    } catch {
+        Write-Error "Force shutdown of VM failed"
     }
 
     exit 1
