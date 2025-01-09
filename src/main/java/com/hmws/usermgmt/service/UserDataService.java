@@ -158,7 +158,7 @@ public class UserDataService {
             int testExitCode = testProcess.waitFor();
             log.info("PowerShell 테스트 종료 코드: {}", testExitCode);
 
-            String ouPath = String.format("OU=%s,DC=hanbit,DC=com", personnelInfo.getDepartment());
+            String ouPath = String.format("OU=%s,DC=hm,DC=com", personnelInfo.getDepartment());
 
             // 실제 AD 사용자 생성 명령 준비
             List<String> commands = Arrays.asList(

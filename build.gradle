@@ -29,6 +29,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -40,6 +42,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

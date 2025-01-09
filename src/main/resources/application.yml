@@ -10,17 +10,17 @@ spring:
     generate-ddl: true
     show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         format_sql: false
-        default_schema: public
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: dbo
+    database-platform: org.hibernate.dialect.SQLServerDialect
 
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://192.168.111.10:5432/hmws?characterEncoding=UTF-8
-    username: postgres
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: jdbc:sqlserver://172.24.247.150:1433;databaseName=hmdb;useUnicode=true;characterEncoding=UTF-8;integratedSecurity=false;encrypt=true;trustServerCertificate=true;
+    username: sa
     password: qw12qw!@
 
   servlet:
@@ -32,7 +32,7 @@ spring:
 ad:
   default:
     password: "qw12qw!@"
-    email-domain: "hw.com"
+    email-domain: "hm.com"
   userScript:
     path: "C:\\vm_scripts\\createAdUser.ps1"
   addVmToAdScript:
@@ -46,9 +46,9 @@ ad:
   vmRun:
     path: "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe"
   server:
-    ip: "192.168.111.10"
+    ip: "172.24.247.150"
   admin:
-    username: "administrator@hanbit.com"
+    username: "administrator@hm.com"
     userInteractive: "administrator"
     password: "qw12qw!@"
 

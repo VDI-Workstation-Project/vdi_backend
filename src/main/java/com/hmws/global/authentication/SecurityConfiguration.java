@@ -41,7 +41,7 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests((auth) ->
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
-                                .requestMatchers("/", "/createAccount", "/login").permitAll()
+                                .requestMatchers("/", "/createAccount", "/login", "/api/citrix/**").permitAll()
                                 .requestMatchers("/createvm").authenticated())
                 .addFilterBefore((new JwtAuthenticationFilter(tokenProvider)),
                         UsernamePasswordAuthenticationFilter.class
