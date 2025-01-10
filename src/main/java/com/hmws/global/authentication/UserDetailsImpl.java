@@ -1,5 +1,6 @@
 package com.hmws.global.authentication;
 
+import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.usermgmt.domain.UserData;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,10 +10,10 @@ import java.util.List;
 
 public class UserDetailsImpl implements UserDetails {
 
-    private final UserData userData;
+    private final AuthUserDto authUser;
 
-    public UserDetailsImpl(UserData userData) {
-        this.userData = userData;
+    public UserDetailsImpl(AuthUserDto authUser) {
+        this.authUser = authUser;
     }
 
     @Override
@@ -42,11 +43,11 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public String getPassword() {
-        return userData.getUserPassword().getPassword();
+        return null;
     }
 
     @Override
     public String getUsername() {
-        return userData.getUserId();
+        return authUser.getUsername();
     }
 }

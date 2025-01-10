@@ -1,5 +1,6 @@
 package com.hmws.global.authentication;
 
+import com.hmws.citrix.storefront.service.StoreFrontService;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfiguration {
 
     private final TokenProvider tokenProvider;
+    private final StoreFrontService storeFrontService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -43,7 +45,7 @@ public class SecurityConfiguration {
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
                                 .requestMatchers("/", "/createAccount", "/login", "/api/citrix/**").permitAll()
                                 .requestMatchers("/createvm").authenticated())
-                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider)),
+                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontService)),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

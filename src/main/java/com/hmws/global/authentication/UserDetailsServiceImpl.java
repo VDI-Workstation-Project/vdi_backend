@@ -1,5 +1,6 @@
 package com.hmws.global.authentication;
 
+import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.usermgmt.domain.UserData;
 import com.hmws.usermgmt.repository.UserDataRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,14 +14,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final UserDataRepository userDataRepository;
-
     @Override
-    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        UserData userData = userDataRepository.findByUserId(userId).orElseThrow(()
-                -> new UsernameNotFoundException("User not found: " + userId));
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        AuthUserDto authUser = AuthUserDto.builder()
+                .username(username)
+                .build();
 
-        return new UserDetailsImpl(userData);
+        return new UserDetailsImpl(authUser);
     }
 
 }

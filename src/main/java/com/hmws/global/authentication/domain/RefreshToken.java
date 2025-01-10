@@ -20,11 +20,26 @@ public class RefreshToken {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String userId;
+    private String username;
 
     @Column(nullable = false)
     private String token;
 
     @Column(nullable = false)
     private LocalDateTime expiryDate;
+
+    private String currentAccessToken;
+
+    @Builder
+    public RefreshToken(String username, String token, LocalDateTime expiryDate, String currentAccessToken) {
+        this.username = username;
+        this.token = token;
+        this.expiryDate = expiryDate;
+        this.currentAccessToken = currentAccessToken;
+    }
+
+    // 액세스 토큰 업데이트 메서드
+    public void updateAccessToken(String newAccessToken) {
+        this.currentAccessToken = newAccessToken;
+    }
 }

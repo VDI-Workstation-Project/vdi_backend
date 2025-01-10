@@ -3,6 +3,9 @@ package com.hmws.citrix.storefront.service;
 import com.hmws.citrix.storefront.dto.LoginFormDto;
 import com.hmws.citrix.storefront.dto.RequirementDto;
 import com.hmws.citrix.storefront.dto.StoreFrontAuthResponse;
+import com.hmws.citrix.storefront.session.CitrixSession;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -18,6 +21,8 @@ import org.xml.sax.InputSource;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -28,60 +33,175 @@ public class StoreFrontService {
 
     private static final String BASE_URL = "http://172.24.247.151/Citrix/hmstoreWeb";
     private final RestTemplate restTemplate;
-    private String csrfToken;
-    private String sessionId;
+
+    private static final ThreadLocal<CitrixSession> citrixSession = new ThreadLocal<>();
+
+    public CitrixSession getCurrentSession() {
+        return citrixSession.get();
+    }
 
     @Transactional
-    public Map<String, Object> getStoreFrontLoginForm() {
-
-        log.info("fetchSiteConfiguration service entrance");
-
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.set(HttpHeaders.USER_AGENT, "My Application");
-        headers.set("X-Citrix-IsUsingHTTPS", "No");
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                BASE_URL + "/Home/Configuration",
-                HttpMethod.POST,
-                entity,
-                String.class
-        );
+    public StoreFrontAuthResponse storeFrontLogin(String username, String password, boolean saveCredentials) {
 
         try {
-            extractCookiesFromHeaders(response.getHeaders());
 
-        } catch (Exception e) {
-            log.error("Failed to extract cookies from headers", e);
-        }
+            HttpHeaders headers = new HttpHeaders();
 
-        Set<String> authMethods = getAuthMethods(this.csrfToken, this.sessionId);
+            headers.set(HttpHeaders.USER_AGENT, "My Application");
+            headers.set("X-Citrix-IsUsingHTTPS", "No");
 
-        String explicitFormMethod = authMethods.stream()
-                .filter(method -> method.equals("ExplicitForms"))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("ExplicitForms authentication method not found"));
-
-        getExplicitLoginForm(explicitFormMethod, this.csrfToken, this.sessionId);
-
-        LoginFormDto loginForm = getExplicitLoginForm(explicitFormMethod, this.csrfToken, this.sessionId);
-
-        if (this.csrfToken != null && this.sessionId != null && loginForm != null) {
-            return Map.of(
-                    "csrfToken", this.csrfToken,
-                    "sessionId", this.sessionId,
-                    "authMethods", authMethods,
-                    "LoginForm", loginForm
+            ResponseEntity<String> response = restTemplate.exchange(
+                    BASE_URL + "/Home/Configuration",
+                    HttpMethod.POST,
+                    new HttpEntity<>(headers),
+                    String.class
             );
 
-        } else {
-            throw new RuntimeException("Required data is missing");
+            extractCookiesFromHeaders(response.getHeaders());
+
+            CitrixSession session = citrixSession.get();
+
+            proceedAuthMethods(session.getCsrfToken(), session.getSessionId());
+
+            proceedExplicitLoginForm(session.getCsrfToken(), session.getSessionId());
+
+            return performLoginAttempt(username, password, saveCredentials, session);
+
+        } catch (Exception e) {
+            log.error("Login failed", e);
+            StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
+            errorResponse.setErrorMessage("Login failed: " + e.getMessage());
+            return errorResponse;
+        }
+
+    }
+
+    public StoreFrontAuthResponse performLoginAttempt(String username, String password, boolean saveCredentials, CitrixSession session) {
+
+        String requestBody = String.format("username=%s&password=%s&saveCredentials=%s&loginBtn=Log+On&StateContext=",
+                URLEncoder.encode(username, StandardCharsets.UTF_8),
+                URLEncoder.encode(password, StandardCharsets.UTF_8),
+                saveCredentials);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Cookie", String.format("CtxsAuthMethod=ExplicitForms; CsrfToken=%s; ASP.NET_SessionId=%s",
+                session.getCsrfToken(), session.getSessionId()));
+        headers.set("Csrf-Token", session.getCsrfToken());
+        headers.set("X-Citrix-IsUsingHTTPS", "No");
+        headers.set("X-Requested-With", "XMLHttpRequest");
+        headers.set("Accept", "application/xml, text/xml, */*; q=0.01");
+
+        log.info("authenticateUser service request body: {}", requestBody);
+        log.info("authenticateUser service headers: {}", headers);
+
+        HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    BASE_URL + "/ExplicitAuth/LoginAttempt",
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            log.info("Response body: {}", response.getBody());
+            log.info("Response Headers: {}", response.getHeaders());
+
+            // CtxsAuthId 추출 및 설정
+            List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+            if (cookies != null) {
+                for (String cookie : cookies) {
+                    if (cookie.contains("CtxsAuthId=")) {
+                        String ctxsAuthId = cookie.split("CtxsAuthId=")[1].split(";")[0];
+                        session.setCtxsAuthId(ctxsAuthId);
+                        break;
+                    }
+                }
+            }
+
+            StoreFrontAuthResponse authResponse = new StoreFrontAuthResponse();
+            authResponse.setStatus(HttpStatus.valueOf(response.getStatusCode().value()));
+
+            // XML 응답을 파싱하여 StoreFrontAuthResponse 객체로 변환
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new InputSource(new StringReader(response.getBody())));
+
+            log.info("document: {}", document);
+
+            // Result 값 추출
+            NodeList resultNodes = document.getElementsByTagName("Result");
+            if (resultNodes.getLength() > 0) {
+                authResponse.setResult(resultNodes.item(0).getTextContent());
+            }
+
+            // AuthType 값 추출
+            NodeList authTypeNodes = document.getElementsByTagName("AuthType");
+            if (authTypeNodes.getLength() > 0) {
+                authResponse.setAuthType(authTypeNodes.item(0).getTextContent());
+            }
+
+            // 에러 메시지 추출 (있는 경우)
+            NodeList errorNodes = document.getElementsByTagName("LogMessage");
+            if (errorNodes.getLength() > 0) {
+                authResponse.setErrorMessage(errorNodes.item(0).getTextContent());
+            }
+
+            return authResponse;
+
+        } catch (Exception e) {
+            log.error("Authentication failed", e);
+            StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
+            errorResponse.setErrorMessage("Authentication failed: " + e.getMessage());
+            return errorResponse;
         }
     }
 
-    private Set<String> getAuthMethods(String csrfToken, String sessionId) {
+    public boolean keepAliveSession(String sessionId, String csrfToken) {
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.set("Cookie", String.format("CsrfToken=%s; ASP.NET_SessionId=%s",
+                csrfToken, sessionId));
+        headers.set("Csrf-Token", csrfToken);
+        headers.set("X-Citrix-IsUsingHTTPS", "No");
+        headers.set("X-Requested-With", "XMLHttpRequest");
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    BASE_URL + "/Home/KeepAlive",
+                    HttpMethod.POST,
+                    new HttpEntity<>(headers),
+                    String.class
+            );
+            return response.getStatusCode().is2xxSuccessful();
+
+        } catch (Exception e) {
+            log.error("KeepAlive request failed", e);
+            return false;
+        }
+    }
+
+    private void extractCookiesFromHeaders(HttpHeaders headers) throws Exception {
+        List<String> cookies = headers.get(HttpHeaders.SET_COOKIE);
+        String csrfToken = null;
+        String sessionId = null;
+        if (cookies != null) {
+            for (String cookie : cookies) {
+                if (cookie.contains("CsrfToken=")) {
+                    csrfToken = cookie.split("CsrfToken=")[1].split(";")[0];
+                    log.info("CSRF TOKEN: {}", csrfToken);
+                }
+                if (cookie.contains("ASP.NET_SessionId=")) {
+                    sessionId = cookie.split("ASP.NET_SessionId=")[1].split(";")[0];
+                    log.info("SESSION ID: " + sessionId);
+                }
+            }
+        }
+        citrixSession.set(new CitrixSession(csrfToken, sessionId));
+    }
+
+    private void proceedAuthMethods(String csrfToken, String sessionId) {
 
         HttpHeaders headers = new HttpHeaders();
 
@@ -90,37 +210,22 @@ public class StoreFrontService {
         headers.set(HttpHeaders.USER_AGENT, "My Application");
         headers.set("X-Citrix-IsUsingHTTPS", "No");
 
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        Set<String> methodNames = new HashSet<>();
-
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
+            restTemplate.execute(
                     BASE_URL + "/Authentication/GetAuthMethods",
                     HttpMethod.POST,
-                    entity,
-                    String.class
+                    request -> {
+                        request.getHeaders().putAll(headers);
+                    },
+                    null
             );
 
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.parse(new InputSource(new StringReader(response.getBody())));
-
-            NodeList methodNodes = document.getElementsByTagName("method");
-            for (int i = 0; i < methodNodes.getLength(); i++) {
-                Element methodElement = (Element) methodNodes.item(i);
-                String methodName = methodElement.getAttribute("name");
-                String methodUrl = methodElement.getAttribute("url");
-                methodNames.add(methodName);
-                log.info("Found auth method: {} with URL: {}", methodName, methodUrl);
-            }
         } catch (Exception e) {
-            log.error("Failed to parse auth methods XML", e);
+            log.error("Failed to execute auth methods request", e);
         }
-        return methodNames;
     }
 
-    private LoginFormDto getExplicitLoginForm(String method, String csrfToken, String sessionId) {
-
+    private void proceedExplicitLoginForm(String csrfToken, String sessionId) {
         HttpHeaders headers = new HttpHeaders();
 
         // 필수 헤더들 설정
@@ -138,161 +243,26 @@ public class StoreFrontService {
 
         // 쿠키 설정
         headers.set(HttpHeaders.COOKIE,
-                String.format("CtxsAuthMethod=%s; CsrfToken=%s; ASP.NET_SessionId=%s",
-                        method,
+                String.format("CtxsAuthMethod=ExplicitForms; CsrfToken=%s; ASP.NET_SessionId=%s",
                         csrfToken,
                         sessionId)
         );
 
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
         try {
-            ResponseEntity<byte[]> response = restTemplate.exchange(
+            restTemplate.execute(
                     BASE_URL + "/ExplicitAuth/Login",
                     HttpMethod.POST,
-                    entity,
-                    byte[].class
+                    request -> {
+                        request.getHeaders().putAll(headers);
+                    },
+                    null
             );
 
-            log.info("Response body: {}", response.getBody());
-
-            byte[] responseBody = response.getBody();
-            responseBody = decompressGzip(responseBody);
-
-            log.info("Response body: {}", byteArrayToHexString(responseBody));
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-
-                log.info("getExplicitLoginForm if entrance");
-                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-                DocumentBuilder builder = factory.newDocumentBuilder();
-                log.info("DocBuilder success check");
-
-                InputStream inputStream = new ByteArrayInputStream(responseBody);
-                log.info("InputStream success check");
-                log.info("inputStream: {}", inputStream);
-
-                Document document = builder.parse(inputStream);
-                log.info("Document success check");
-
-                LoginFormDto loginForm = parseLoginForm(document);
-
-                return loginForm;
-            }
-            log.error("Response body is null");
-            return null;
-
         } catch (Exception e) {
-            log.error("Failed to parse login form XML", e);
-            return null;
-        }
-
-    }
-
-    public StoreFrontAuthResponse authenticateUser(String username, String password, boolean saveCredentials) {
-
-        String requestXml = String.format("""
-        <?xml version="1.0" encoding="UTF-8"?>
-        <AuthenticationData xmlns="http://citrix.com/authentication/response/1">
-            <Credentials>
-                <Credential><ID>username</ID><Value>%s</Value></Credential>
-                <Credential><ID>password</ID><Value>%s</Value></Credential>
-                <Credential><ID>saveCredentials</ID><Value>%s</Value></Credential>
-            </Credentials>
-        </AuthenticationData>
-        """, username, password, saveCredentials);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_XML);
-        headers.set("CsrfToken", this.csrfToken);
-        headers.set("X-Citrix-IsUsingHTTPS", "No");
-
-        HttpEntity<String> request = new HttpEntity<>(requestXml, headers);
-
-        return restTemplate.postForObject(
-                BASE_URL + "/ExplicitAuth/LoginAttempt",
-                request,
-                StoreFrontAuthResponse.class
-        );
-    }
-
-    private void extractCookiesFromHeaders(HttpHeaders headers) throws Exception {
-        List<String> cookies = headers.get(HttpHeaders.SET_COOKIE);
-        if (cookies != null) {
-            for (String cookie : cookies) {
-                if (cookie.contains("CsrfToken=")) {
-                    this.csrfToken = cookie.split("CsrfToken=")[1].split(";")[0];
-                    log.info("CSRF TOKEN: {}", this.csrfToken);
-                }
-                if (cookie.contains("ASP.NET_SessionId=")) {
-                    this.sessionId = cookie.split("ASP.NET_SessionId=")[1].split(";")[0];
-                    log.info("SESSION ID: " + this.sessionId);
-                }
-            }
+            log.error("Failed to execute login form request", e);
         }
     }
 
-    private byte[] decompressGzip(byte[] compressedData) throws IOException {
-        ByteArrayInputStream byteInput = new ByteArrayInputStream(compressedData);
-        GZIPInputStream gzipInput = new GZIPInputStream(byteInput);
-        ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int length;
-        while ((length = gzipInput.read(buffer)) > 0) {
-            byteOutput.write(buffer, 0, length);
-        }
-        byteOutput.close();
-        gzipInput.close();
-        return byteOutput.toByteArray();
-    }
-
-    private String byteArrayToHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02X ", b));
-        }
-        return sb.toString();
-    }
-
-    private LoginFormDto parseLoginForm(Document document) {
-
-        Element root = document.getDocumentElement();
-        Element authReq = (Element) root.getElementsByTagName("AuthenticationRequirements").item(0);
-
-        String postBackUrl = authReq.getElementsByTagName("PostBack").item(0).getTextContent();
-        String cancelUrl = authReq.getElementsByTagName("CancelPostBack").item(0).getTextContent();
-
-        NodeList requirements = document.getElementsByTagName("Requirement");
-        List<RequirementDto> reqDtos = new ArrayList<>();
-
-        for (int i = 0; i < requirements.getLength(); i++) {
-            Element req = (Element) requirements.item(i);
-            Element credential = (Element) req.getElementsByTagName("Credential").item(0);
-
-            reqDtos.add(RequirementDto.builder()
-                    .id(getElementContent(credential, "ID"))
-                    .type(getElementContent(credential, "Type"))
-                    .label(getElementContent(req, "Text"))
-                    .initialValue(getElementContent(req, "InitialValue"))
-                    .build());
-        }
-
-        return LoginFormDto.builder()
-                .postBackUrl(postBackUrl)
-                .cancelUrl(cancelUrl)
-                .requirements(reqDtos)
-                .build();
-
-    }
-
-    private String getElementContent(Element parent, String tagName) {
-        NodeList nodeList = parent.getElementsByTagName(tagName);
-        if (nodeList != null && nodeList.getLength() > 0) {
-            Node node = nodeList.item(0);
-            if (node != null) {
-                return node.getTextContent();
-            }
-        }
-        return "";
-    }
 }
+
+

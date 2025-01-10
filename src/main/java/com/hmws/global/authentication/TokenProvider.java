@@ -1,6 +1,9 @@
 package com.hmws.global.authentication;
 
+import com.hmws.citrix.storefront.service.StoreFrontService;
+import com.hmws.citrix.storefront.session.CitrixSession;
 import com.hmws.global.authentication.domain.RefreshToken;
+import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
 import com.hmws.usermgmt.dto.UserDataDto;
 import com.hmws.usermgmt.service.UserDataService;
@@ -31,6 +34,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TokenProvider {
 
+    private final StoreFrontService storeFrontService;
     @Value("${jwt.secret}")
     private String secretKey;
 
@@ -42,10 +46,6 @@ public class TokenProvider {
 
     private Key key;
 
-    private final UserDetailsService userDetailsService;
-
-    private final UserDataService userDataService;
-
     private final RefreshTokenRepository refreshTokenRepository;
 
     @PostConstruct
@@ -54,11 +54,11 @@ public class TokenProvider {
         key = Keys.hmacShaKeyFor(encodedKey.getBytes());
     }
 
-    public String generateToken(UserDataDto userDataDto) {
+    public String generateToken(AuthUserDto authUser) {
         return Jwts.builder()
-                .setSubject(userDataDto.getUserId())
+                .setSubject(authUser.getUsername())
                 .setHeader(createHeader())
-                .setClaims(createClaims(userDataDto))
+                .setClaims(createClaims(authUser))
                 .setExpiration(new Date(System.currentTimeMillis() + tokenExpirationTime))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
@@ -73,9 +73,12 @@ public class TokenProvider {
         return header;
     }
 
-    public Map<String, Object> createClaims(UserDataDto userDataDto) {
+    public Map<String, Object> createClaims(AuthUserDto authUser) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", userDataDto.getUserId());
+        claims.put("username", authUser.getUsername());
+        claims.put("citrixCsrfToken", authUser.getCitrixCsrfToken());
+        claims.put("citrixSessionId", authUser.getCitrixSessionId());
+        claims.put("citrixAuthId", authUser.getCitrixAuthId());
 
         return claims;
     }
@@ -107,44 +110,55 @@ public class TokenProvider {
     }
 
     public Authentication getAuthentication(String token) {
-        UserDetails userDetails = userDetailsService.loadUserByUsername(getUserId(token));
+
+        Claims claims = getClaims(token);
+        String username = (String) claims.get("username");
+
+        AuthUserDto authUser = AuthUserDto.builder()
+                .username(username)
+                .citrixCsrfToken((String) claims.get("citrixCsrfToken"))
+                .citrixSessionId((String) claims.get("citrixSessionId"))
+                .citrixAuthId((String) claims.get("citrixAuthId"))
+                .build();
+
+        UserDetails userDetails = new UserDetailsImpl(authUser);
         return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
     }
 
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String username) {
 
         LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpirationTime);
 
         String refreshToken = Jwts.builder()
-                .setSubject(userId)
+                .setSubject(username)
                 .setExpiration(java.sql.Timestamp.valueOf(expiryDate))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 
         RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .userId(userId)
+                .username(username)
                 .token(refreshToken)
                 .expiryDate(expiryDate)
                 .build();
 
-        refreshTokenRepository.findByUserId(userId).ifPresent(token -> refreshTokenRepository.deleteByUserId(userId));
+        refreshTokenRepository.findByUsername(username).ifPresent(token -> refreshTokenRepository.deleteByUsername(username));
 
         refreshTokenRepository.save(refreshTokenEntity);
 
         return refreshToken;
     }
 
-    public String refreshAcessTokoen(String refreshToken) {
+    public String refreshAccessToken(String username) {
 
-        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh Token이 존재하지 않습니다"));
+        CitrixSession citrixSession = storeFrontService.getCurrentSession();
 
-        if (savedRefreshToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(savedRefreshToken);
-            throw new RuntimeException("Refresh Token이 만료되었습니다");
-        }
+        AuthUserDto authUser = AuthUserDto.builder()
+                .username(citrixSession.getCsrfToken())
+                .citrixCsrfToken(citrixSession.getCsrfToken())
+                .citrixSessionId(citrixSession.getSessionId())
+                .citrixAuthId(citrixSession.getCtxsAuthId())
+                .build();
 
-        UserDataDto userDataDto = userDataService.getUserByUserId(savedRefreshToken.getUserId(), LocalDateTime.now());
-        return generateToken(userDataDto);
+        return generateToken(authUser);
     }
 }

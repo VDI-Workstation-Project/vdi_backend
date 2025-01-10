@@ -40,7 +40,7 @@ public class UserDataController {
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestBody String refreshToken) {
         try {
-            String newAccessToken = tokenProvider.refreshAcessTokoen(refreshToken);
+            String newAccessToken = tokenProvider.refreshAccessToken(refreshToken);
             return ResponseEntity.ok(Map.of(
                     "accessToken", newAccessToken
             ));
@@ -71,7 +71,7 @@ public class UserDataController {
 
                 UserDataDto userData = userDataService.getUserByUserId(request.getUserId(), logInAttemptTime);
 
-                accessToken = tokenProvider.generateToken(userData);
+//                accessToken = tokenProvider.generateToken(userData);
                 refreshToken = tokenProvider.generateRefreshToken(userData.getUserId());
 
             }
