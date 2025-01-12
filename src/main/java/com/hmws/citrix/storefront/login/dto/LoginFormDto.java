@@ -1,4 +1,4 @@
-package com.hmws.citrix.storefront.dto;
+package com.hmws.citrix.storefront.login.dto;
 
 import lombok.Builder;
 import lombok.Getter;

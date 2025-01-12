@@ -1,11 +1,7 @@
-package com.hmws.citrix.storefront.service;
+package com.hmws.citrix.storefront.login.service;
 
-import com.hmws.citrix.storefront.dto.LoginFormDto;
-import com.hmws.citrix.storefront.dto.RequirementDto;
-import com.hmws.citrix.storefront.dto.StoreFrontAuthResponse;
-import com.hmws.citrix.storefront.session.CitrixSession;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import com.hmws.citrix.storefront.login.dto.StoreFrontAuthResponse;
+import com.hmws.citrix.storefront.login.session.StoreFrontSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -13,8 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
@@ -24,19 +18,18 @@ import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.zip.GZIPInputStream;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class StoreFrontService {
+public class StoreFrontLogInService {
 
     private static final String BASE_URL = "http://172.24.247.151/Citrix/hmstoreWeb";
     private final RestTemplate restTemplate;
 
-    private static final ThreadLocal<CitrixSession> citrixSession = new ThreadLocal<>();
+    private static final ThreadLocal<StoreFrontSession> citrixSession = new ThreadLocal<>();
 
-    public CitrixSession getCurrentSession() {
+    public StoreFrontSession getCurrentSession() {
         return citrixSession.get();
     }
 
@@ -59,7 +52,7 @@ public class StoreFrontService {
 
             extractCookiesFromHeaders(response.getHeaders());
 
-            CitrixSession session = citrixSession.get();
+            StoreFrontSession session = citrixSession.get();
 
             proceedAuthMethods(session.getCsrfToken(), session.getSessionId());
 
@@ -76,7 +69,7 @@ public class StoreFrontService {
 
     }
 
-    public StoreFrontAuthResponse performLoginAttempt(String username, String password, boolean saveCredentials, CitrixSession session) {
+    public StoreFrontAuthResponse performLoginAttempt(String username, String password, boolean saveCredentials, StoreFrontSession session) {
 
         String requestBody = String.format("username=%s&password=%s&saveCredentials=%s&loginBtn=Log+On&StateContext=",
                 URLEncoder.encode(username, StandardCharsets.UTF_8),
@@ -159,6 +152,9 @@ public class StoreFrontService {
     }
 
     public boolean keepAliveSession(String sessionId, String csrfToken) {
+
+        log.info("keepAliveSession entrance");
+
         HttpHeaders headers = new HttpHeaders();
 
         headers.set("Cookie", String.format("CsrfToken=%s; ASP.NET_SessionId=%s",
@@ -170,10 +166,13 @@ public class StoreFrontService {
         try {
             ResponseEntity<String> response = restTemplate.exchange(
                     BASE_URL + "/Home/KeepAlive",
-                    HttpMethod.POST,
+                    HttpMethod.HEAD,
                     new HttpEntity<>(headers),
                     String.class
             );
+
+            log.info("keepAliveSession response: {}", response);
+
             return response.getStatusCode().is2xxSuccessful();
 
         } catch (Exception e) {
@@ -198,7 +197,7 @@ public class StoreFrontService {
                 }
             }
         }
-        citrixSession.set(new CitrixSession(csrfToken, sessionId));
+        citrixSession.set(new StoreFrontSession(csrfToken, sessionId));
     }
 
     private void proceedAuthMethods(String csrfToken, String sessionId) {

@@ -1,6 +1,6 @@
 package com.hmws.global.authentication;
 
-import com.hmws.citrix.storefront.service.StoreFrontService;
+import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,7 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfiguration {
 
     private final TokenProvider tokenProvider;
-    private final StoreFrontService storeFrontService;
+    private final StoreFrontLogInService storeFrontLogInService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -43,9 +42,9 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests((auth) ->
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
-                                .requestMatchers("/", "/createAccount", "/login", "/api/citrix/**").permitAll()
-                                .requestMatchers("/createvm").authenticated())
-                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontService)),
+                                .requestMatchers("/", "/createAccount", "/login").permitAll()
+                                .requestMatchers("/createvm", "/api/storefront/**", "/api/auth/**").authenticated())
+                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontLogInService)),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

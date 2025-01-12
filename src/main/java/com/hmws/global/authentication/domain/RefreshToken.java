@@ -22,12 +22,13 @@ public class RefreshToken {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1024)
     private String token;
 
     @Column(nullable = false)
     private LocalDateTime expiryDate;
 
+    @Column(name = "current_access_token", length = 1024)
     private String currentAccessToken;
 
     @Builder

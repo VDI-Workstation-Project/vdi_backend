@@ -1,4 +1,4 @@
-package com.hmws.citrix.storefront.dto;
+package com.hmws.citrix.storefront.login.dto;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import lombok.Getter;

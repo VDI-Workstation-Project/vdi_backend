@@ -1,6 +1,6 @@
-package com.hmws.citrix.storefront.session;
+package com.hmws.citrix.storefront.login.session;
 
-import com.hmws.citrix.storefront.service.StoreFrontService;
+import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
 import com.hmws.global.authentication.TokenProvider;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
@@ -13,19 +13,22 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class CitrixSessionManager {
+public class StoreFrontSessionManager {
 
-    private final StoreFrontService storeFrontService;
+    private final StoreFrontLogInService storeFrontLogInService;
     private final TokenProvider tokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    @Scheduled(fixedRate = 45 * 60 * 1000) // 45분 = 2,700,000 밀리초
+    @Scheduled(fixedRate = 3300000) // 55분
     public void keepAliveSessions() {
+
+        log.info("keepAliveSessions auto started");
+
         refreshTokenRepository.findAll().forEach(refreshToken -> {
             try {
                 Claims claims = tokenProvider.getClaims(refreshToken.getToken());
 
-                boolean sessionValid = storeFrontService.keepAliveSession(
+                boolean sessionValid = storeFrontLogInService.keepAliveSession(
                         (String) claims.get("citrixSessionId"),
                         (String) claims.get("citrixCsrfToken")
                 );

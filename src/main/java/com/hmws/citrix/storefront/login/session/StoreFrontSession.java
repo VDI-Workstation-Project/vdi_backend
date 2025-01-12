@@ -1,18 +1,17 @@
-package com.hmws.citrix.storefront.session;
+package com.hmws.citrix.storefront.login.session;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class CitrixSession {
+public class StoreFrontSession {
 
     private String csrfToken;
     private String sessionId;
     private String ctxsAuthId;
 
-    public CitrixSession(String csrfToken, String sessionId) {
+    public StoreFrontSession(String csrfToken, String sessionId) {
         this.csrfToken = csrfToken;
         this.sessionId = sessionId;
     }

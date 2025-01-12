@@ -1,12 +1,9 @@
 package com.hmws.global.authentication;
 
-import com.hmws.citrix.storefront.service.StoreFrontService;
-import com.hmws.citrix.storefront.session.CitrixSession;
+import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
 import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
-import com.hmws.usermgmt.dto.UserDataDto;
-import com.hmws.usermgmt.service.UserDataService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -17,13 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import io.jsonwebtoken.security.Keys;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Date;
@@ -34,7 +28,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TokenProvider {
 
-    private final StoreFrontService storeFrontService;
+    private final StoreFrontLogInService storeFrontLogInService;
     @Value("${jwt.secret}")
     private String secretKey;
 
@@ -150,15 +144,23 @@ public class TokenProvider {
 
     public String refreshAccessToken(String username) {
 
-        CitrixSession citrixSession = storeFrontService.getCurrentSession();
+        // 기존 코드 제거
+        RefreshToken storedToken = refreshTokenRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        Claims claims = getClaims(storedToken.getToken());
 
         AuthUserDto authUser = AuthUserDto.builder()
-                .username(citrixSession.getCsrfToken())
-                .citrixCsrfToken(citrixSession.getCsrfToken())
-                .citrixSessionId(citrixSession.getSessionId())
-                .citrixAuthId(citrixSession.getCtxsAuthId())
+                .username(username)
+                .citrixCsrfToken((String) claims.get("citrixCsrfToken"))
+                .citrixSessionId((String) claims.get("citrixSessionId"))
+                .citrixAuthId((String) claims.get("citrixAuthId"))
                 .build();
 
-        return generateToken(authUser);
+        String newAccessToken = generateToken(authUser);
+        storedToken.updateAccessToken(newAccessToken);
+        refreshTokenRepository.save(storedToken);
+
+        return newAccessToken;
     }
 }
