@@ -50,4 +50,8 @@ public class UserDetailsImpl implements UserDetails {
     public String getUsername() {
         return authUser.getUsername();
     }
+
+    public AuthUserDto getAuthUser() {
+        return authUser;
+    }
 }

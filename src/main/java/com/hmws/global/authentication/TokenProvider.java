@@ -51,9 +51,11 @@ public class TokenProvider {
     public String generateToken(AuthUserDto authUser) {
         return Jwts.builder()
                 .setSubject(authUser.getUsername())
-                .setHeader(createHeader())
-                .setClaims(createClaims(authUser))
-                .setExpiration(new Date(System.currentTimeMillis() + tokenExpirationTime))
+                .claim("citrixCsrfToken", authUser.getCitrixCsrfToken())
+                .claim("citrixSessionId", authUser.getCitrixSessionId())
+                .claim("citrixAuthId", authUser.getCitrixAuthId())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + tokenExpirationTime * 1000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
