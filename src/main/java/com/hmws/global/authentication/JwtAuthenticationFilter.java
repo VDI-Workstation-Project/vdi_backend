@@ -1,6 +1,6 @@
 package com.hmws.global.authentication;
 
-import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
+import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;

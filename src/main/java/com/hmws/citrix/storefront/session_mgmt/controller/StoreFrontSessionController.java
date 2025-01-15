@@ -1,8 +1,10 @@
-package com.hmws.citrix.storefront.login.controller;
+package com.hmws.citrix.storefront.session_mgmt.controller;
 
-import com.hmws.citrix.storefront.login.dto.StoreFrontAuthResponse;
-import com.hmws.citrix.storefront.login.dto.StoreFrontLogInRequest;
-import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
+import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
+import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
+import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
+import com.hmws.global.authentication.UserDetailsImpl;
+import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.dto.LogInResponse;
 import com.hmws.global.authentication.service.AuthService;
 import com.hmws.global.exception.ErrorResponse;
@@ -10,14 +12,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/storefront")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:5173")
 @Slf4j
-public class StoreFrontLogInController {
+public class StoreFrontSessionController {
 
     private final StoreFrontLogInService storeFrontLogInService;
     private final AuthService authService;
@@ -59,4 +65,21 @@ public class StoreFrontLogInController {
 
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        AuthUserDto authUser = userDetails.getAuthUser();
+
+        boolean isLogoutSuccessful = storeFrontLogInService.logout(authUser);
+
+        if (isLogoutSuccessful) {
+            return ResponseEntity.ok(Map.of("success", true));
+        }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("success", false));
+
+    }
 }

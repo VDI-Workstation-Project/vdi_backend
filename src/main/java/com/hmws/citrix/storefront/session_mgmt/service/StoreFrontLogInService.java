@@ -1,7 +1,8 @@
-package com.hmws.citrix.storefront.login.service;
+package com.hmws.citrix.storefront.session_mgmt.service;
 
-import com.hmws.citrix.storefront.login.dto.StoreFrontAuthResponse;
-import com.hmws.citrix.storefront.login.session.StoreFrontSession;
+import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
+import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSession;
+import com.hmws.global.authentication.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -179,6 +180,30 @@ public class StoreFrontLogInService {
             log.error("KeepAlive request failed", e);
             return false;
         }
+    }
+
+    public boolean logout(AuthUserDto authUser) {
+
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.set("Csrf-Token", authUser.getCitrixCsrfToken());
+        headers.set("X-Citrix-IsUsingHTTPS", "No");
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    BASE_URL + "/Authentication/Logoff",
+                    HttpMethod.POST,
+                    new HttpEntity<>(headers),
+                    String.class
+            );
+
+            return response.getStatusCode().is2xxSuccessful();
+
+        } catch (Exception e) {
+            log.error("Logout request failed", e);
+            return false;
+        }
+
     }
 
     private void extractCookiesFromHeaders(HttpHeaders headers) throws Exception {

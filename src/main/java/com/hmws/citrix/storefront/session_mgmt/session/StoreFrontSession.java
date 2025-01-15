@@ -1,4 +1,4 @@
-package com.hmws.citrix.storefront.login.session;
+package com.hmws.citrix.storefront.session_mgmt.session;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

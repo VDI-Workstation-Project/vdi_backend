@@ -1,4 +1,4 @@
-package com.hmws.citrix.storefront.login.config;
+package com.hmws.citrix.storefront.session_mgmt.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

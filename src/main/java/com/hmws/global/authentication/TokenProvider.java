@@ -1,6 +1,6 @@
 package com.hmws.global.authentication;
 
-import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
+import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;

@@ -1,7 +1,7 @@
 package com.hmws.global.authentication.service;
 
-import com.hmws.citrix.storefront.login.dto.StoreFrontLogInRequest;
-import com.hmws.citrix.storefront.login.service.StoreFrontLogInService;
+import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
+import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.global.authentication.TokenProvider;
 import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;

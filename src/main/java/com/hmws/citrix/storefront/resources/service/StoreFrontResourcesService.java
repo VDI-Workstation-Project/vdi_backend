@@ -51,8 +51,7 @@ public class StoreFrontResourcesService {
                     BASE_URL + "/Resources/List",
                     HttpMethod.POST,
                     entity,
-                    StoreFrontResourcesResponse.class
-            );
+                    StoreFrontResourcesResponse.class);
 
             String ctxsDeviceId = extractDeviceId(response.getHeaders());
 
@@ -114,8 +113,8 @@ public class StoreFrontResourcesService {
                 BASE_URL + "/" + launchInfo.getLaunchStatusUrl(),
                 HttpMethod.POST,
                 requestEntity,
-                new ParameterizedTypeReference<Map<String, String>>() {}
-        );
+                new ParameterizedTypeReference<Map<String, String>>() {
+                });
 
         log.info("Check LaunchStatus ended........... {}", response.getBody());
 
@@ -150,8 +149,7 @@ public class StoreFrontResourcesService {
                 BASE_URL + "/" + launchInfo.getLaunchUrl() + queryParams,
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                byte[].class
-        );
+                byte[].class);
 
         log.info("Get LaunchIca ended........... {}", response.getBody());
 
