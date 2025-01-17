@@ -1,1 +1,0 @@
-package scripts;"-Command `"Write-Host (Test-Path 'C:\Scripts\security_settings.ps1'); exit (if(Test-Path 'C:\Scripts\security_settings.ps1') { 0 } else { 1 })`"" 2>&1

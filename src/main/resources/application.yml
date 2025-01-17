@@ -1,3 +1,6 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: backend
@@ -10,7 +13,7 @@ spring:
     generate-ddl: true
     show-sql: true
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: false
@@ -19,7 +22,7 @@ spring:
 
   datasource:
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    url: jdbc:sqlserver://172.24.247.150:1433;databaseName=hmdb;useUnicode=true;characterEncoding=UTF-8;integratedSecurity=false;encrypt=true;trustServerCertificate=true;
+    url: jdbc:sqlserver://${ad.server.ip}:1433;databaseName=hmdb;useUnicode=true;characterEncoding=UTF-8;integratedSecurity=false;encrypt=true;trustServerCertificate=true;
     username: sa
     password: qw12qw!@
 
@@ -31,8 +34,31 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  ldap:
+    urls: ldaps://172.21.198.150:636
+    base: DC=hm,DC=com
+    username: CN=Administrator,CN=Users,DC=hm,DC=com
+    password: "qw12qw!@"
+    allowed-networks: "172.21.0.0/16, 14.39.132.0/24"
+    ssl:
+      enabled: true
+      trust-all: true
+
+logging:
+  level:
+    com.hmws: DEBUG
+    org.springframework.ldap: DEBUG
+    javax.net.ssl: DEBUG
+    com.sun.jndi.ldap: DEBUG
+
+citrix:
+  storefront:
+    server:
+      ip: ${STOREFRONT_SERVER_IP:172.21.198.151}
+      base-url: http://${citrix.storefront.server.ip}/Citrix/hmstoreWeb
 
 ad:
   default:
@@ -51,7 +77,7 @@ ad:
   vmRun:
     path: "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe"
   server:
-    ip: "172.24.247.150"
+    ip: ${MAIN_SERVER_IP:172.21.198.150}
   admin:
     username: "administrator@hm.com"
     userInteractive: "administrator"
@@ -62,6 +88,3 @@ jwt:
   expiration-time: 3600000
   refresh-token:
     expiration-time: 604800
-
-server:
-  port: 8081

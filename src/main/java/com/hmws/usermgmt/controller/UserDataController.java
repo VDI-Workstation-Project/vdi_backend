@@ -27,12 +27,12 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:5173")
 public class UserDataController {
 
     private final UserDataService userDataService;
 
-    private  final TokenProvider tokenProvider;
+    private final TokenProvider tokenProvider;
 
     private final AuthenticationManagerBuilder authMgmtBuilder;
 
@@ -50,7 +50,6 @@ public class UserDataController {
                     .body("토큰 갱신에 실패했습니다: " + e.getMessage());
         }
     }
-
 
 
     @PostMapping("/login")
@@ -89,8 +88,21 @@ public class UserDataController {
     // @Valid: 요청 데이터의 유효성을 검사하는 어노테이션. UserRegistrationRequest 클래스에 정의된 제약조건을 검사
     // RequestBody: HTTP 요청의 본문(JSON)을 Java 객체로 변환해주는 어노테이션. 클라이언트가 보낸 JSON 데이터를 UserRegistrationRequest 객체로 자동 변환
     @PostMapping("/createAccount")
-    public ResponseEntity<String> createAccount(@Valid @RequestBody UserRegistrationRequestDto request) {
-        userDataService.createAdUser(request);
-        return ResponseEntity.ok("AD 사용자 생성 요청이 완료되었습니다.");
+    public ResponseEntity<Map<String, Object>> createAccount(@Valid @RequestBody UserRegistrationRequestDto request) {
+
+        try {
+            userDataService.createAdUser(request);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "AD 사용자 생성이 완료되었습니다.");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+
     }
 }

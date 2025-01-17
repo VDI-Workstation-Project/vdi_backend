@@ -4,10 +4,10 @@ import com.hmws.citrix.storefront.resources.dto.StoreFrontLaunchInfo;
 import com.hmws.citrix.storefront.resources.dto.StoreFrontResourcesDto;
 import com.hmws.citrix.storefront.resources.dto.StoreFrontResourcesResponse;
 import com.hmws.citrix.storefront.resources.repository.StoreFrontLaunchInfoRepository;
-import com.hmws.global.authentication.TokenProvider;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,9 @@ import java.util.UUID;
 @Slf4j
 public class StoreFrontResourcesService {
 
-    private static final String BASE_URL = "http://172.24.247.151/Citrix/hmstoreWeb";
+    @Value("${citrix.storefront.server.base-url}")
+    private String storeFrontBaseUrl;
+
     private final RestTemplate restTemplate;
     private final StoreFrontLaunchInfoRepository launchInfoRepository;
 
@@ -48,7 +50,7 @@ public class StoreFrontResourcesService {
 
         try {
             ResponseEntity<StoreFrontResourcesResponse> response = restTemplate.exchange(
-                    BASE_URL + "/Resources/List",
+                    storeFrontBaseUrl + "/Resources/List",
                     HttpMethod.POST,
                     entity,
                     StoreFrontResourcesResponse.class);
@@ -110,7 +112,7 @@ public class StoreFrontResourcesService {
         log.info("Launch Status Request Entity - Body {}", requestEntity.getBody());
 
         ResponseEntity<Map<String, String>> response = restTemplate.exchange(
-                BASE_URL + "/" + launchInfo.getLaunchStatusUrl(),
+                storeFrontBaseUrl + "/" + launchInfo.getLaunchStatusUrl(),
                 HttpMethod.POST,
                 requestEntity,
                 new ParameterizedTypeReference<Map<String, String>>() {
@@ -146,7 +148,7 @@ public class StoreFrontResourcesService {
         headers.set("X-Citrix-IsUsingHTTPS", "No");
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
-                BASE_URL + "/" + launchInfo.getLaunchUrl() + queryParams,
+                storeFrontBaseUrl + "/" + launchInfo.getLaunchUrl() + queryParams,
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
                 byte[].class);

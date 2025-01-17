@@ -5,6 +5,7 @@ import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSession;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,9 @@ import java.util.*;
 @Slf4j
 public class StoreFrontLogInService {
 
-    private static final String BASE_URL = "http://172.24.247.151/Citrix/hmstoreWeb";
+    @Value("${citrix.storefront.server.base-url}")
+    private String storeFrontBaseUrl;
+
     private final RestTemplate restTemplate;
 
     private static final ThreadLocal<StoreFrontSession> citrixSession = new ThreadLocal<>();
@@ -45,7 +48,7 @@ public class StoreFrontLogInService {
             headers.set("X-Citrix-IsUsingHTTPS", "No");
 
             ResponseEntity<String> response = restTemplate.exchange(
-                    BASE_URL + "/Home/Configuration",
+                    storeFrontBaseUrl + "/Home/Configuration",
                     HttpMethod.POST,
                     new HttpEntity<>(headers),
                     String.class
@@ -93,7 +96,7 @@ public class StoreFrontLogInService {
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    BASE_URL + "/ExplicitAuth/LoginAttempt",
+                    storeFrontBaseUrl + "/ExplicitAuth/LoginAttempt",
                     HttpMethod.POST,
                     entity,
                     String.class
@@ -166,7 +169,7 @@ public class StoreFrontLogInService {
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    BASE_URL + "/Home/KeepAlive",
+                    storeFrontBaseUrl + "/Home/KeepAlive",
                     HttpMethod.HEAD,
                     new HttpEntity<>(headers),
                     String.class
@@ -191,7 +194,7 @@ public class StoreFrontLogInService {
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    BASE_URL + "/Authentication/Logoff",
+                    storeFrontBaseUrl + "/Authentication/Logoff",
                     HttpMethod.POST,
                     new HttpEntity<>(headers),
                     String.class
@@ -236,7 +239,7 @@ public class StoreFrontLogInService {
 
         try {
             restTemplate.execute(
-                    BASE_URL + "/Authentication/GetAuthMethods",
+                    storeFrontBaseUrl + "/Authentication/GetAuthMethods",
                     HttpMethod.POST,
                     request -> {
                         request.getHeaders().putAll(headers);
@@ -260,7 +263,7 @@ public class StoreFrontLogInService {
         headers.set("Csrf-Token", csrfToken);
         headers.set("X-Citrix-IsUsingHTTPS", "No");
         headers.set("X-Requested-With", "XMLHttpRequest");
-        headers.set(HttpHeaders.REFERER, BASE_URL);
+        headers.set(HttpHeaders.REFERER, storeFrontBaseUrl);
         headers.set(HttpHeaders.CONNECTION, "keep-alive");
         headers.set(HttpHeaders.PRAGMA, "no-cache");
         headers.set(HttpHeaders.CACHE_CONTROL, "no-cache");
@@ -274,7 +277,7 @@ public class StoreFrontLogInService {
 
         try {
             restTemplate.execute(
-                    BASE_URL + "/ExplicitAuth/Login",
+                    storeFrontBaseUrl + "/ExplicitAuth/Login",
                     HttpMethod.POST,
                     request -> {
                         request.getHeaders().putAll(headers);

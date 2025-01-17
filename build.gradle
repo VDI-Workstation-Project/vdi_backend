@@ -31,6 +31,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
+    // LDAP
+    implementation 'org.springframework.boot:spring-boot-starter-data-ldap'
+    implementation 'commons-net:commons-net:3.9.0'  // SubnetUtils 사용을 위한 의존성
+
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
     // Redis

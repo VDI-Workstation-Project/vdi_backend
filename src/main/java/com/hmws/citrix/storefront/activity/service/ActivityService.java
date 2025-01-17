@@ -7,6 +7,7 @@ import com.hmws.citrix.storefront.resources.service.StoreFrontResourcesService;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -23,7 +24,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class ActivityService {
 
-    private static final String BASE_URL = "http://172.24.247.151/Citrix/hmstoreWeb";
+    @Value("${citrix.storefront.server.base-url}")
+    private String storeFrontBaseUrl;
+
     private final RestTemplate restTemplate;
     private final StoreFrontResourcesService resourcesService;
     private final StoreFrontLaunchInfoRepository launchInfoRepository;
@@ -46,7 +49,7 @@ public class ActivityService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         return restTemplate.exchange(
-                BASE_URL + "/Sessions/List",
+                storeFrontBaseUrl + "/Sessions/List",
                 HttpMethod.GET,
                 entity,
                 ActivityResponse.class
@@ -74,7 +77,7 @@ public class ActivityService {
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
         restTemplate.exchange(
-                BASE_URL + "/MachineControl/ShutDown",
+                storeFrontBaseUrl + "/MachineControl/ShutDown",
                 HttpMethod.POST,
                 entity,
                 Void.class
