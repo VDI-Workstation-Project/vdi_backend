@@ -29,7 +29,10 @@ public class PersonnelInfo {
     private String lastName;
 
     @Column(nullable = false, length = 20)
-    private String phoneNumber;
+    private String telephone;
+
+    @Column(nullable = false, length = 20)
+    private String mobile;
 
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)

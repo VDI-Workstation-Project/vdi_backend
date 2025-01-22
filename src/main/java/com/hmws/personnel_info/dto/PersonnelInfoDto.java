@@ -23,9 +23,12 @@ public class PersonnelInfoDto {
     @NotBlank(message = "성은 필수 입력 정보입니다")
     private String lastName;
 
+    @NotBlank(message = "전화번호는 필수입니다")
+    private String telephone;
+
     @NotBlank(message = "휴대폰 번호는 필수입니다")
     @Pattern(regexp = "^\\d{3}-\\d{3,4}-\\d{4}$", message = "올바른 휴대폰 번호 형식이 아닙니다")
-    private String phoneNumber;
+    private String mobile;
 
     @NotNull(message = "직급은 필수 입력 정보입니다")
     private UserRole role;

@@ -57,14 +57,15 @@ public class UserDataService {
 
         return new UserDataDto(
                 user.getUserNumber(),
-                user.getUserIp(),
                 user.getUserId(),
-                user.getUserPassword().getPasswordId(),
+                user.getUserPasswordLogs().getPasswordId(),
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getPhoneNumber(),
-                user.getRole(),
+                user.getTelephone(),
+                user.getMobile(),
+                user.getUserType(),
+                user.getUserRole(),
                 user.getSecurityGroup(),
                 user.getOrganizationalUnitPath(),
                 user.getCreatedAt(),
@@ -107,7 +108,7 @@ public class UserDataService {
             throw new IllegalArgumentException("모든 필드는 필수입니다.");
         }
 
-        PersonnelInfo personnelInfo = personnelInfoRepository.findByFirstNameAndLastNameAndPhoneNumber(
+        PersonnelInfo personnelInfo = personnelInfoRepository.findByFirstNameAndLastNameAndMobile(
                 request.getFirstName(), request.getLastName(), request.getPhoneNumber()
         ).orElseThrow(() -> new RuntimeException("인사정보를 찾을 수 없습니다."));
 
@@ -149,8 +150,9 @@ public class UserDataService {
 
             // 추가 속성 설정
             context.setAttributeValue("mail", email);
-            context.setAttributeValue("telephoneNumber", request.getPhoneNumber());
-            context.setAttributeValue("title", personnelInfo.getRole().getRole());
+            context.setAttributeValue("telephoneNumber", personnelInfo.getTelephone());
+            context.setAttributeValue("mobile", request.getPhoneNumber());
+            context.setAttributeValue("title", personnelInfo.getRole().name());
             context.setAttributeValue("department", personnelInfo.getDepartment());
 
             // 계정 옵션 설정 (512: 일반 계정, 544: 일반 계정 + 비밀번호 변경 필요)

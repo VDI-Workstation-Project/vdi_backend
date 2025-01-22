@@ -62,7 +62,7 @@ public class LdapConfig {
 
         // Java Home 경로를 이용한 키스토어 설정
         String javaHome = System.getProperty("java.home");
-        String trustStorePath = javaHome + "/lib/security/cacerts";
+        String trustStorePath = javaHome + "\\lib\\security\\cacerts";
 
         log.info("Using trustStore path: {}", trustStorePath);
 

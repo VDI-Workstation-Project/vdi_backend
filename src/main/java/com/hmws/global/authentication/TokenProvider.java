@@ -4,6 +4,8 @@ import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
+import com.hmws.usermgmt.constant.UserRole;
+import com.hmws.usermgmt.constant.UserType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -51,6 +53,8 @@ public class TokenProvider {
     public String generateToken(AuthUserDto authUser) {
         return Jwts.builder()
                 .setSubject(authUser.getUsername())
+                .claim("userType", authUser.getUserType().name())
+                .claim("userRole", authUser.getUserRole().name())
                 .claim("citrixCsrfToken", authUser.getCitrixCsrfToken())
                 .claim("citrixSessionId", authUser.getCitrixSessionId())
                 .claim("citrixAuthId", authUser.getCitrixAuthId())
@@ -109,9 +113,13 @@ public class TokenProvider {
 
         Claims claims = getClaims(token);
         String username = (String) claims.get("username");
+        UserType userType = UserType.valueOf((String) claims.get("userType"));
+        UserRole userRole = UserRole.valueOf((String) claims.get("userRole"));
 
         AuthUserDto authUser = AuthUserDto.builder()
                 .username(username)
+                .userType(userType)
+                .userRole(userRole)
                 .citrixCsrfToken((String) claims.get("citrixCsrfToken"))
                 .citrixSessionId((String) claims.get("citrixSessionId"))
                 .citrixAuthId((String) claims.get("citrixAuthId"))

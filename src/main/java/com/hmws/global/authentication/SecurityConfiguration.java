@@ -1,6 +1,7 @@
 package com.hmws.global.authentication;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
+import com.hmws.usermgmt.constant.RoleHierarchyChecker;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -47,7 +49,13 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((auth) ->
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
                                 .requestMatchers("/", "/createAccount", "/login", "/api/storefront/login").permitAll()
-                                .requestMatchers("/createvm", "/api/storefront/**", "/api/auth/**").authenticated())
+                                // 관리자이면서 인턴 이상만 접근 가능
+                                .requestMatchers("/admin/**").access(new WebExpressionAuthorizationManager(
+                                        "hasRole('ADMIN') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
+                                // 사용자이면서 인턴 이상만 접근 가능
+                                .requestMatchers("/user/**").access(new WebExpressionAuthorizationManager(
+                                        "hasRole('USER') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
+                                .anyRequest().authenticated())
                 .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontLogInService)),
                         UsernamePasswordAuthenticationFilter.class
                 );

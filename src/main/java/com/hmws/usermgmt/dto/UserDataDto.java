@@ -1,5 +1,7 @@
 package com.hmws.usermgmt.dto;
 
+import com.hmws.usermgmt.constant.UserRole;
+import com.hmws.usermgmt.constant.UserType;
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,9 +20,6 @@ public class UserDataDto {
 
     private Long userNumber;
 
-    @NotNull(message = "IP는 필수 입력 정보입니다")
-    private String userIp;
-
     @NotNull(message = "ID는 필수 입력 정보입니다")
     private String userId;
 
@@ -36,12 +35,18 @@ public class UserDataDto {
     @NotNull(message = "성은 필수 입력 정보입니다")
     private String lastName;
 
+    @NotNull(message = "전화번호는 필수입니다")
+    private String telephone;
+
     @NotBlank(message = "휴대폰 번호는 필수입니다")
     @Pattern(regexp = "^\\d{3}-\\d{3,4}-\\d{4}$", message = "올바른 휴대폰 번호 형식이 아닙니다")
-    private String phoneNumber;
+    private String mobile;
+
+    @NotNull(message = "사용자 유형은 필수 입력 정보입니다")
+    private UserType userType;
 
     @NotNull(message = "직급은 필수 입력 정보입니다")
-    private String role;
+    private UserRole userRole;
 
     private String SecurityGroup;
 

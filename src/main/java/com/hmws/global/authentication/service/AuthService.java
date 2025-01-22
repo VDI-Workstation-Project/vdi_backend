@@ -7,6 +7,8 @@ import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.dto.LogInResponse;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
+import com.hmws.usermgmt.domain.UserData;
+import com.hmws.usermgmt.repository.UserDataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,12 +23,20 @@ public class AuthService {
     private final TokenProvider tokenProvider;
     private final StoreFrontLogInService storeFrontLogInService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserDataRepository userRepository;
 
     public LogInResponse getTokens(StoreFrontLogInRequest request) {
+
+        log.info("AuthService Username: {}", request.getUsername());
+
+        UserData userData = userRepository.findByUserId(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         // 로그인 성공 시 JWT 토큰 생성
         AuthUserDto authUser = AuthUserDto.builder()
                 .username(request.getUsername())
+                .userType(userData.getUserType())
+                .userRole(userData.getUserRole())
                 .citrixCsrfToken(storeFrontLogInService.getCurrentSession().getCsrfToken())
                 .citrixSessionId(storeFrontLogInService.getCurrentSession().getSessionId())
                 .citrixAuthId(storeFrontLogInService.getCurrentSession().getCtxsAuthId())

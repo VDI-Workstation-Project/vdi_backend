@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Getter
@@ -14,24 +13,22 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString(exclude = "userData")
-public class Password {
+public class PasswordLogs {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(updatable = false)
     private Long passwordId;
 
-    @OneToOne(mappedBy = "userPassword", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "userPasswordLogs", cascade = CascadeType.ALL)
     private UserData user;
-
-    @Column(nullable = false)
-    private String password;
 
     private LocalDateTime changedAt;
 
     private LocalDateTime expiresAt;
 
-    public boolean validatePassword(String rawPassword) {
-        return this.password.equals(rawPassword);
+    public void logPasswordChange(LocalDateTime changedAt, LocalDateTime expiresAt) {
+        this.changedAt = changedAt;
+        this.expiresAt = expiresAt;
     }
 }
