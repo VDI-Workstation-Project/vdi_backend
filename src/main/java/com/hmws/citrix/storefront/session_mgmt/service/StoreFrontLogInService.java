@@ -1,5 +1,6 @@
 package com.hmws.citrix.storefront.session_mgmt.service;
 
+import com.hmws.citrix.storefront.session_mgmt.dto.PasswordChangeRequest;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSession;
 import com.hmws.global.authentication.dto.AuthUserDto;
@@ -62,14 +63,27 @@ public class StoreFrontLogInService {
 
             proceedExplicitLoginForm(session.getCsrfToken(), session.getSessionId());
 
-            return performLoginAttempt(username, password, saveCredentials, session);
+            StoreFrontAuthResponse authResponse = performLoginAttempt(username, password, saveCredentials, session);
+
+            if ("update-credentials".equals(authResponse.getResult())) {
+//                authResponse.setSessionId(session.getSessionId());
+//                authResponse.setCsrfToken(session.getCsrfToken());
+
+                return authResponse;
+            }
+
+            return authResponse;
 
         } catch (Exception e) {
             log.error("Login failed", e);
             StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
             errorResponse.setErrorMessage("Login failed: " + e.getMessage());
             return errorResponse;
+
         }
+//        finally {
+//            citrixSession.remove();
+//        }
 
     }
 
@@ -118,7 +132,7 @@ public class StoreFrontLogInService {
             }
 
             StoreFrontAuthResponse authResponse = new StoreFrontAuthResponse();
-            authResponse.setStatus(HttpStatus.valueOf(response.getStatusCode().value()));
+            authResponse.setHttpStatus(HttpStatus.valueOf(response.getStatusCode().value()));
 
             // XML 응답을 파싱하여 StoreFrontAuthResponse 객체로 변환
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -209,6 +223,64 @@ public class StoreFrontLogInService {
 
     }
 
+    public StoreFrontAuthResponse changePassword(PasswordChangeRequest request) {
+
+//        log.info("changePassword entrance");
+//        log.info("request sessionId: {}", request.getSessionId());
+//        log.info("request csrfToken: {}", request.getCsrfToken());
+//
+//        StoreFrontSession session = new StoreFrontSession(
+//                request.getSessionId(),
+//                request.getCsrfToken()
+//        );
+//
+//        citrixSession.set(session);
+
+        StoreFrontSession session = getCurrentSession();
+        if (session == null) {
+            throw new RuntimeException("No active session found");
+        }
+
+        String requestBody = String.format("oldPassword=%s&newPassword=%s&confirmPassword=%s&changePasswordBtn=OK&StateContext=",
+                URLEncoder.encode(request.getOldPassword(), StandardCharsets.UTF_8),
+                URLEncoder.encode(request.getNewPassword(), StandardCharsets.UTF_8),
+                URLEncoder.encode(request.getConfirmPassword(), StandardCharsets.UTF_8));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Cookie", String.format("CtxsAuthMethod=ExplicitForms; CsrfToken=%s; ASP.NET_SessionId=%s",
+                session.getCsrfToken(), session.getSessionId()));
+        headers.set("Csrf-Token", session.getCsrfToken());
+        headers.set("X-Citrix-IsUsingHTTPS", "No");
+        headers.set("X-Requested-With", "XMLHttpRequest");
+        headers.set("Accept", "application/xml, text/xml, */*; q=0.01");
+
+        log.info("requestBody: {}", requestBody);
+
+        HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    storeFrontBaseUrl + "/ExplicitAuth/SendForm",
+                    HttpMethod.POST,
+                    new HttpEntity<>(headers),
+                    String.class
+            );
+
+            log.info("changePassword response: {}", response);
+
+            HttpStatus httpStatus = HttpStatus.valueOf(response.getStatusCode().value());
+
+            return parseAuthResponse(httpStatus, response.getBody());
+
+        } catch (Exception e) {
+            log.error("Password change failed", e);
+            StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
+            errorResponse.setErrorMessage("Password change failed: " + e.getMessage());
+            return errorResponse;
+        }
+    }
+
     private void extractCookiesFromHeaders(HttpHeaders headers) throws Exception {
         List<String> cookies = headers.get(HttpHeaders.SET_COOKIE);
         String csrfToken = null;
@@ -288,6 +360,75 @@ public class StoreFrontLogInService {
         } catch (Exception e) {
             log.error("Failed to execute login form request", e);
         }
+    }
+
+    private StoreFrontAuthResponse parseAuthResponse(HttpStatus httpStatus, String xmlResponse) {
+
+        log.info("parseAuthResponse entrance");
+
+        StoreFrontAuthResponse authResponse = new StoreFrontAuthResponse();
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+            // XXE 공격 방지
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new InputSource(new StringReader(xmlResponse)));
+
+            // Http Response 저장
+            authResponse.setHttpStatus(httpStatus);
+
+            // Status 파싱
+            NodeList statusNodes = document.getElementsByTagName("Status");
+            if (statusNodes.getLength() > 0) {
+                String status = statusNodes.item(0).getTextContent();
+                authResponse.setResponseStatus(status.toLowerCase());
+            }
+
+            // Result 파싱
+            NodeList resultNodes = document.getElementsByTagName("Result");
+            if (resultNodes.getLength() > 0) {
+                String result = resultNodes.item(0).getTextContent();
+                authResponse.setResult(result.toLowerCase());
+
+                // more-info인 경우 성공 메시지 확인
+                if ("more-info".equals(result)) {
+                    NodeList labelNodes = document.getElementsByTagName("Text");
+                    for (int i = 0; i < labelNodes.getLength(); i++) {
+                        String text = labelNodes.item(i).getTextContent();
+                        if (text.contains("successfully")) {
+                            authResponse.setResult("success");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 에러 메시지나 확인 메시지 파싱
+            NodeList textNodes = document.getElementsByTagName("Text");
+            if (textNodes.getLength() > 0) {
+                authResponse.setErrorMessage(textNodes.item(0).getTextContent());
+            }
+
+            log.info("authResponse httpStatus: {}", authResponse.getHttpStatus());
+            log.info("authResponse result: {}", authResponse.getResult());
+            log.info("authResponse errorMessage: {}", authResponse.getErrorMessage());
+            log.info("authResponse sessionId: {}", authResponse.getSessionId());
+            log.info("authResponse csrfToken: {}", authResponse.getCsrfToken());
+
+            return authResponse;
+
+        } catch (Exception e) {
+            log.error("Failed to parse authentication response", e);
+            authResponse.setResult("error");
+            authResponse.setErrorMessage("Failed to parse response: " + e.getMessage());
+            return authResponse;
+        }
+
     }
 
 }

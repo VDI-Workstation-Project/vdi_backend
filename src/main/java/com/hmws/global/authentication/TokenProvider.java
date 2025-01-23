@@ -6,6 +6,8 @@ import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.repository.RefreshTokenRepository;
 import com.hmws.usermgmt.constant.UserRole;
 import com.hmws.usermgmt.constant.UserType;
+import com.hmws.usermgmt.domain.UserData;
+import com.hmws.usermgmt.repository.UserDataRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -43,6 +45,8 @@ public class TokenProvider {
     private Key key;
 
     private final RefreshTokenRepository refreshTokenRepository;
+
+    private final UserDataRepository userDataRepository;
 
     @PostConstruct
     protected void init() {
@@ -154,14 +158,20 @@ public class TokenProvider {
 
     public String refreshAccessToken(String username) {
 
-        // 기존 코드 제거
+        // 리프레시 토큰 조회
         RefreshToken storedToken = refreshTokenRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        // UserData 조회하여 userType과 userRole 가져오기
+        UserData userData = userDataRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
         Claims claims = getClaims(storedToken.getToken());
 
         AuthUserDto authUser = AuthUserDto.builder()
                 .username(username)
+                .userType(userData.getUserType())
+                .userRole(userData.getUserRole())
                 .citrixCsrfToken((String) claims.get("citrixCsrfToken"))
                 .citrixSessionId((String) claims.get("citrixSessionId"))
                 .citrixAuthId((String) claims.get("citrixAuthId"))

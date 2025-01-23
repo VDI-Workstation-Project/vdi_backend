@@ -29,7 +29,7 @@ public class AuthService {
 
         log.info("AuthService Username: {}", request.getUsername());
 
-        UserData userData = userRepository.findByUserId(request.getUsername())
+        UserData userData = userRepository.findByEmail(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // 로그인 성공 시 JWT 토큰 생성

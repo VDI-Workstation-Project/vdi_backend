@@ -10,10 +10,13 @@ import org.springframework.http.HttpStatus;
 @JacksonXmlRootElement(localName = "AuthenticationData")
 public class StoreFrontAuthResponse {
 
-    private HttpStatus status;
+    private HttpStatus httpStatus;
+    private String responseStatus;
     private String result;
     private String errorMessage;
     private String authType;
+    private String sessionId;
+    private String csrfToken;
 
     public boolean isSuccess() {
         return "success".equals(result);

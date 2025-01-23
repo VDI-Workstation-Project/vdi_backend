@@ -48,7 +48,7 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests((auth) ->
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
-                                .requestMatchers("/", "/createAccount", "/login", "/api/storefront/login").permitAll()
+                                .requestMatchers("/", "/createAccount", "/login", "/api/storefront/login", "/api/storefront/change-password").permitAll()
                                 // 관리자이면서 인턴 이상만 접근 가능
                                 .requestMatchers("/admin/**").access(new WebExpressionAuthorizationManager(
                                         "hasRole('ADMIN') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
