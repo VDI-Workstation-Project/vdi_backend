@@ -44,8 +44,9 @@ public class StoreFrontSessionController {
                 return ResponseEntity.ok(Map.of(
                         "success", false,
                         "result", "update-credentials",
-//                        "sessionId", authResponse.getSessionId(),
-//                        "csrfToken", authResponse.getCsrfToken(),
+                        "sessionId", authResponse.getSessionId(),
+                        "csrfToken", authResponse.getCsrfToken(),
+                        "xmlForm", authResponse.getXmlResponse(),
                         "message", "비밀번호 변경이 필요합니다."
                 ));
             }

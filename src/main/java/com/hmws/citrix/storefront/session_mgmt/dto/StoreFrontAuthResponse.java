@@ -17,6 +17,7 @@ public class StoreFrontAuthResponse {
     private String authType;
     private String sessionId;
     private String csrfToken;
+    private String xmlResponse;
 
     public boolean isSuccess() {
         return "success".equals(result);

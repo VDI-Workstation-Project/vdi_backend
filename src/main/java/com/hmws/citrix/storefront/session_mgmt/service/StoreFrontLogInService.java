@@ -63,16 +63,7 @@ public class StoreFrontLogInService {
 
             proceedExplicitLoginForm(session.getCsrfToken(), session.getSessionId());
 
-            StoreFrontAuthResponse authResponse = performLoginAttempt(username, password, saveCredentials, session);
-
-            if ("update-credentials".equals(authResponse.getResult())) {
-//                authResponse.setSessionId(session.getSessionId());
-//                authResponse.setCsrfToken(session.getCsrfToken());
-
-                return authResponse;
-            }
-
-            return authResponse;
+            return performLoginAttempt(username, password, saveCredentials, session);
 
         } catch (Exception e) {
             log.error("Login failed", e);
@@ -134,6 +125,9 @@ public class StoreFrontLogInService {
             StoreFrontAuthResponse authResponse = new StoreFrontAuthResponse();
             authResponse.setHttpStatus(HttpStatus.valueOf(response.getStatusCode().value()));
 
+            authResponse.setSessionId(session.getSessionId());
+            authResponse.setCsrfToken(session.getCsrfToken());
+
             // XML 응답을 파싱하여 StoreFrontAuthResponse 객체로 변환
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
@@ -144,6 +138,9 @@ public class StoreFrontLogInService {
             // Result 값 추출
             NodeList resultNodes = document.getElementsByTagName("Result");
             if (resultNodes.getLength() > 0) {
+                if ("update-credentials".equals(resultNodes.item(0).getTextContent())) {
+                    authResponse.setXmlResponse(response.getBody());
+                }
                 authResponse.setResult(resultNodes.item(0).getTextContent());
             }
 
@@ -417,8 +414,6 @@ public class StoreFrontLogInService {
             log.info("authResponse httpStatus: {}", authResponse.getHttpStatus());
             log.info("authResponse result: {}", authResponse.getResult());
             log.info("authResponse errorMessage: {}", authResponse.getErrorMessage());
-            log.info("authResponse sessionId: {}", authResponse.getSessionId());
-            log.info("authResponse csrfToken: {}", authResponse.getCsrfToken());
 
             return authResponse;
 
