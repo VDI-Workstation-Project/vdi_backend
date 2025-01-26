@@ -13,11 +13,11 @@ public class StoreFrontAuthResponse {
     private HttpStatus httpStatus;
     private String responseStatus;
     private String result;
-    private String errorMessage;
+    private String message;
     private String authType;
     private String sessionId;
     private String csrfToken;
-    private String xmlResponse;
+    private String ctxsAuthId;
 
     public boolean isSuccess() {
         return "success".equals(result);

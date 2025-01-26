@@ -3,6 +3,7 @@ package com.hmws.citrix.storefront.session_mgmt.service;
 import com.hmws.citrix.storefront.session_mgmt.dto.PasswordChangeRequest;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSession;
+import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSessionService;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +32,9 @@ public class StoreFrontLogInService {
     private String storeFrontBaseUrl;
 
     private final RestTemplate restTemplate;
+    private final StoreFrontSessionService sessionService;
 
     private static final ThreadLocal<StoreFrontSession> citrixSession = new ThreadLocal<>();
-
-    public StoreFrontSession getCurrentSession() {
-        return citrixSession.get();
-    }
 
     @Transactional
     public StoreFrontAuthResponse storeFrontLogin(String username, String password, boolean saveCredentials) {
@@ -55,26 +53,29 @@ public class StoreFrontLogInService {
                     String.class
             );
 
-            extractCookiesFromHeaders(response.getHeaders());
-
-            StoreFrontSession session = citrixSession.get();
+            // 세션 정보 추출 및 Redis에 저장
+            StoreFrontSession session = extractCookiesFromHeaders(response.getHeaders());
 
             proceedAuthMethods(session.getCsrfToken(), session.getSessionId());
 
             proceedExplicitLoginForm(session.getCsrfToken(), session.getSessionId());
 
-            return performLoginAttempt(username, password, saveCredentials, session);
+            StoreFrontAuthResponse authResponse =  performLoginAttempt(username, password, saveCredentials, session);
+
+            // 비밀번호 변경이 필요하지 않은 경우 Redis에서 세션 제거
+            if (!"update-credentials".equals(authResponse.getResult())) {
+                sessionService.removeSession(session.getSessionId());
+            }
+
+            return authResponse;
 
         } catch (Exception e) {
             log.error("Login failed", e);
             StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
-            errorResponse.setErrorMessage("Login failed: " + e.getMessage());
+            errorResponse.setMessage("Login failed: " + e.getMessage());
             return errorResponse;
 
         }
-//        finally {
-//            citrixSession.remove();
-//        }
 
     }
 
@@ -117,7 +118,8 @@ public class StoreFrontLogInService {
                     if (cookie.contains("CtxsAuthId=")) {
                         String ctxsAuthId = cookie.split("CtxsAuthId=")[1].split(";")[0];
                         session.setCtxsAuthId(ctxsAuthId);
-                        break;
+                        sessionService.saveSession(session);
+                    break;
                     }
                 }
             }
@@ -127,6 +129,7 @@ public class StoreFrontLogInService {
 
             authResponse.setSessionId(session.getSessionId());
             authResponse.setCsrfToken(session.getCsrfToken());
+            authResponse.setCtxsAuthId(session.getCtxsAuthId());
 
             // XML 응답을 파싱하여 StoreFrontAuthResponse 객체로 변환
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -138,9 +141,6 @@ public class StoreFrontLogInService {
             // Result 값 추출
             NodeList resultNodes = document.getElementsByTagName("Result");
             if (resultNodes.getLength() > 0) {
-                if ("update-credentials".equals(resultNodes.item(0).getTextContent())) {
-                    authResponse.setXmlResponse(response.getBody());
-                }
                 authResponse.setResult(resultNodes.item(0).getTextContent());
             }
 
@@ -153,7 +153,7 @@ public class StoreFrontLogInService {
             // 에러 메시지 추출 (있는 경우)
             NodeList errorNodes = document.getElementsByTagName("LogMessage");
             if (errorNodes.getLength() > 0) {
-                authResponse.setErrorMessage(errorNodes.item(0).getTextContent());
+                authResponse.setMessage(errorNodes.item(0).getTextContent());
             }
 
             return authResponse;
@@ -161,7 +161,7 @@ public class StoreFrontLogInService {
         } catch (Exception e) {
             log.error("Authentication failed", e);
             StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
-            errorResponse.setErrorMessage("Authentication failed: " + e.getMessage());
+            errorResponse.setMessage("Authentication failed: " + e.getMessage());
             return errorResponse;
         }
     }
@@ -220,20 +220,11 @@ public class StoreFrontLogInService {
 
     }
 
+    @Transactional
     public StoreFrontAuthResponse changePassword(PasswordChangeRequest request) {
 
-//        log.info("changePassword entrance");
-//        log.info("request sessionId: {}", request.getSessionId());
-//        log.info("request csrfToken: {}", request.getCsrfToken());
-//
-//        StoreFrontSession session = new StoreFrontSession(
-//                request.getSessionId(),
-//                request.getCsrfToken()
-//        );
-//
-//        citrixSession.set(session);
-
-        StoreFrontSession session = getCurrentSession();
+        // Redis에서 세션 조회
+        StoreFrontSession session = sessionService.getSession(request.getSessionId());
         if (session == null) {
             throw new RuntimeException("No active session found");
         }
@@ -260,7 +251,7 @@ public class StoreFrontLogInService {
             ResponseEntity<String> response = restTemplate.exchange(
                     storeFrontBaseUrl + "/ExplicitAuth/SendForm",
                     HttpMethod.POST,
-                    new HttpEntity<>(headers),
+                    entity,
                     String.class
             );
 
@@ -268,17 +259,27 @@ public class StoreFrontLogInService {
 
             HttpStatus httpStatus = HttpStatus.valueOf(response.getStatusCode().value());
 
-            return parseAuthResponse(httpStatus, response.getBody());
+            StoreFrontAuthResponse authResponse =  parseAuthResponse(httpStatus, response.getBody());
+
+            // 비밀번호 변경이 성공한 경우에만 세션 제거
+            if ("success".equals(authResponse.getResult())) {
+                log.info("비밀번호 변경 성공. 세션 제거: {}", session.getSessionId());
+                sessionService.removeSession(session.getSessionId());
+            } else {
+                log.warn("비밀번호 변경 실패. 세션 유지: {}", session.getSessionId());
+            }
+
+            return authResponse;
 
         } catch (Exception e) {
             log.error("Password change failed", e);
             StoreFrontAuthResponse errorResponse = new StoreFrontAuthResponse();
-            errorResponse.setErrorMessage("Password change failed: " + e.getMessage());
+            errorResponse.setMessage("Password change failed: " + e.getMessage());
             return errorResponse;
         }
     }
 
-    private void extractCookiesFromHeaders(HttpHeaders headers) throws Exception {
+    private StoreFrontSession extractCookiesFromHeaders(HttpHeaders headers) throws Exception {
         List<String> cookies = headers.get(HttpHeaders.SET_COOKIE);
         String csrfToken = null;
         String sessionId = null;
@@ -294,7 +295,10 @@ public class StoreFrontLogInService {
                 }
             }
         }
-        citrixSession.set(new StoreFrontSession(csrfToken, sessionId));
+        StoreFrontSession session = new StoreFrontSession(csrfToken, sessionId);
+        sessionService.saveSession(session);
+
+        return session;
     }
 
     private void proceedAuthMethods(String csrfToken, String sessionId) {
@@ -408,19 +412,19 @@ public class StoreFrontLogInService {
             // 에러 메시지나 확인 메시지 파싱
             NodeList textNodes = document.getElementsByTagName("Text");
             if (textNodes.getLength() > 0) {
-                authResponse.setErrorMessage(textNodes.item(0).getTextContent());
+                authResponse.setMessage(textNodes.item(0).getTextContent());
             }
 
             log.info("authResponse httpStatus: {}", authResponse.getHttpStatus());
             log.info("authResponse result: {}", authResponse.getResult());
-            log.info("authResponse errorMessage: {}", authResponse.getErrorMessage());
+            log.info("authResponse errorMessage: {}", authResponse.getMessage());
 
             return authResponse;
 
         } catch (Exception e) {
             log.error("Failed to parse authentication response", e);
             authResponse.setResult("error");
-            authResponse.setErrorMessage("Failed to parse response: " + e.getMessage());
+            authResponse.setMessage("Failed to parse response: " + e.getMessage());
             return authResponse;
         }
 

@@ -1,5 +1,6 @@
 package com.hmws.global.authentication.service;
 
+import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.global.authentication.TokenProvider;
@@ -21,11 +22,10 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private final TokenProvider tokenProvider;
-    private final StoreFrontLogInService storeFrontLogInService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserDataRepository userRepository;
 
-    public LogInResponse getTokens(StoreFrontLogInRequest request) {
+    public LogInResponse getTokens(StoreFrontLogInRequest request, StoreFrontAuthResponse storeFrontResponse) {
 
         log.info("AuthService Username: {}", request.getUsername());
 
@@ -37,9 +37,9 @@ public class AuthService {
                 .username(request.getUsername())
                 .userType(userData.getUserType())
                 .userRole(userData.getUserRole())
-                .citrixCsrfToken(storeFrontLogInService.getCurrentSession().getCsrfToken())
-                .citrixSessionId(storeFrontLogInService.getCurrentSession().getSessionId())
-                .citrixAuthId(storeFrontLogInService.getCurrentSession().getCtxsAuthId())
+                .citrixCsrfToken(storeFrontResponse.getCsrfToken())
+                .citrixSessionId(storeFrontResponse.getSessionId())
+                .citrixAuthId(storeFrontResponse.getCtxsAuthId())
                 .build();
 
         String accessToken = tokenProvider.generateToken(authUser);

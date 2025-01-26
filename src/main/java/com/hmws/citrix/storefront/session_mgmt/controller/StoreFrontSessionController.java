@@ -4,6 +4,7 @@ import com.hmws.citrix.storefront.session_mgmt.dto.PasswordChangeRequest;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
+import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSessionService;
 import com.hmws.global.authentication.UserDetailsImpl;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.dto.LogInResponse;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class StoreFrontSessionController {
 
     private final StoreFrontLogInService storeFrontLogInService;
+    private final StoreFrontSessionService sessionService;
     private final AuthService authService;
 
     @PostMapping("/login")
@@ -45,8 +47,6 @@ public class StoreFrontSessionController {
                         "success", false,
                         "result", "update-credentials",
                         "sessionId", authResponse.getSessionId(),
-                        "csrfToken", authResponse.getCsrfToken(),
-                        "xmlForm", authResponse.getXmlResponse(),
                         "message", "비밀번호 변경이 필요합니다."
                 ));
             }
@@ -56,12 +56,12 @@ public class StoreFrontSessionController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(new ErrorResponse(
                                 HttpStatus.UNAUTHORIZED.value(),
-                                authResponse.getErrorMessage() != null ?
-                                        authResponse.getErrorMessage() : "로그인에 실패했습니다."
+                                authResponse.getMessage() != null ?
+                                        authResponse.getMessage() : "로그인에 실패했습니다."
                         ));
             }
 
-            LogInResponse response = authService.getTokens(request);
+            LogInResponse response = authService.getTokens(request, authResponse);
 
             return ResponseEntity.ok(response);
 
@@ -99,7 +99,17 @@ public class StoreFrontSessionController {
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody PasswordChangeRequest request) {
 
+        log.info("change-password entrance");
+
         try {
+
+            if (sessionService.getSession(request.getSessionId()) == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ErrorResponse(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "No active session found"
+                        ));
+            }
             StoreFrontAuthResponse authResponse = storeFrontLogInService.changePassword(request);
 
             if ("success".equals(authResponse.getResult())) {
@@ -112,8 +122,8 @@ public class StoreFrontSessionController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorResponse(
                                 HttpStatus.BAD_REQUEST.value(),
-                                authResponse.getErrorMessage() != null ?
-                                        authResponse.getErrorMessage() :
+                                authResponse.getMessage() != null ?
+                                        authResponse.getMessage() :
                                         "비밀번호 변경에 실패했습니다."
                         ));
             }
