@@ -1,6 +1,8 @@
-package com.hmws.global.authentication;
+package com.hmws.global.authentication.utils;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
+import com.hmws.global.authentication.dto.RedisRefreshToken;
+import com.hmws.global.authentication.repository.RedisRefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -19,10 +22,11 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
 
     private final TokenProvider tokenProvider;
     private final StoreFrontLogInService storeFrontLogInService;
+    private final RedisRefreshTokenRepository redisRefreshTokenRepository;
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
-        throws IOException, ServletException {
+            throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
@@ -51,20 +55,26 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
         try {
             if (token != null && tokenProvider.validateToken(token)) {
                 Claims claims = tokenProvider.getClaims(token);
+                String username = claims.getSubject();
 
-                // Citrix 세션 유효성 검사
-                boolean sessionValid = storeFrontLogInService.keepAliveSession(
-                        (String) claims.get("citrixSessionId"),
-                        (String) claims.get("citrixCsrfToken")
-                );
+                // Redis에서 현재 액세스 토큰 확인
+                Optional<RedisRefreshToken> refreshToken = redisRefreshTokenRepository.findByUsername(username);
 
-                if (sessionValid) {
-                    Authentication authentication = tokenProvider.getAuthentication(token);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("Session expired");
-                    return;
+                if (refreshToken.isPresent() && refreshToken.get().getCurrentAccessToken().equals(token)) {
+                    // Citrix 세션 유효성 검사
+                    boolean sessionValid = storeFrontLogInService.keepAliveSession(
+                            (String) claims.get("citrixSessionId"),
+                            (String) claims.get("citrixCsrfToken")
+                    );
+
+                    if (sessionValid) {
+                        Authentication authentication = tokenProvider.getAuthentication(token);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("Session expired");
+                        return;
+                    }
                 }
             }
         } catch (Exception e) {

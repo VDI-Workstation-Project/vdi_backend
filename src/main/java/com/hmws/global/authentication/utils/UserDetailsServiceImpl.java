@@ -1,10 +1,9 @@
-package com.hmws.global.authentication;
+package com.hmws.global.authentication.utils;
 
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.usermgmt.domain.UserData;
 import com.hmws.usermgmt.repository.UserDataRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

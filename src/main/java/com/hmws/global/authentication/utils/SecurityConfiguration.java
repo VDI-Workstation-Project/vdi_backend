@@ -1,7 +1,7 @@
-package com.hmws.global.authentication;
+package com.hmws.global.authentication.utils;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
-import com.hmws.usermgmt.constant.RoleHierarchyChecker;
+import com.hmws.global.authentication.repository.RedisRefreshTokenRepository;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +29,7 @@ public class SecurityConfiguration {
 
     private final TokenProvider tokenProvider;
     private final StoreFrontLogInService storeFrontLogInService;
+    private final RedisRefreshTokenRepository redisRefreshTokenRepository;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -56,7 +57,7 @@ public class SecurityConfiguration {
                                 .requestMatchers("/user/**").access(new WebExpressionAuthorizationManager(
                                         "hasRole('USER') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
                                 .anyRequest().authenticated())
-                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontLogInService)),
+                .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontLogInService, redisRefreshTokenRepository)),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

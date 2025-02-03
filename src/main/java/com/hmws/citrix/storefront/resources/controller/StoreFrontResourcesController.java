@@ -1,19 +1,14 @@
 package com.hmws.citrix.storefront.resources.controller;
 
 import com.hmws.citrix.storefront.resources.dto.StoreFrontResourcesDto;
-import com.hmws.citrix.storefront.resources.dto.StoreFrontResourcesResponse;
 import com.hmws.citrix.storefront.resources.service.StoreFrontResourcesService;
-import com.hmws.global.authentication.TokenProvider;
-import com.hmws.global.authentication.UserDetailsImpl;
+import com.hmws.global.authentication.utils.UserDetailsImpl;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.exception.ErrorResponse;
-import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

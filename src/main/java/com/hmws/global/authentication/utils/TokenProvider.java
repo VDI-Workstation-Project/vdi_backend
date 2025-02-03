@@ -1,9 +1,9 @@
-package com.hmws.global.authentication;
+package com.hmws.global.authentication.utils;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
-import com.hmws.global.authentication.domain.RefreshToken;
 import com.hmws.global.authentication.dto.AuthUserDto;
-import com.hmws.global.authentication.repository.RefreshTokenRepository;
+import com.hmws.global.authentication.dto.RedisRefreshToken;
+import com.hmws.global.authentication.repository.RedisRefreshTokenRepository;
 import com.hmws.usermgmt.constant.UserRole;
 import com.hmws.usermgmt.constant.UserType;
 import com.hmws.usermgmt.domain.UserData;
@@ -44,7 +44,7 @@ public class TokenProvider {
 
     private Key key;
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisRefreshTokenRepository refreshTokenRepository;
 
     private final UserDataRepository userDataRepository;
 
@@ -143,15 +143,15 @@ public class TokenProvider {
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
+        RedisRefreshToken redisRefreshTokenEntity = RedisRefreshToken.builder()
                 .username(username)
                 .token(refreshToken)
                 .expiryDate(expiryDate)
                 .build();
 
-        refreshTokenRepository.findByUsername(username).ifPresent(token -> refreshTokenRepository.deleteByUsername(username));
+        refreshTokenRepository.deleteByUsername(username);
 
-        refreshTokenRepository.save(refreshTokenEntity);
+        refreshTokenRepository.save(redisRefreshTokenEntity);
 
         return refreshToken;
     }
@@ -159,7 +159,7 @@ public class TokenProvider {
     public String refreshAccessToken(String username) {
 
         // 리프레시 토큰 조회
-        RefreshToken storedToken = refreshTokenRepository.findByUsername(username)
+        RedisRefreshToken storedToken = refreshTokenRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Refresh token not found"));
 
         // UserData 조회하여 userType과 userRole 가져오기
@@ -178,7 +178,7 @@ public class TokenProvider {
                 .build();
 
         String newAccessToken = generateToken(authUser);
-        storedToken.updateAccessToken(newAccessToken);
+        storedToken.setCurrentAccessToken(newAccessToken);
         refreshTokenRepository.save(storedToken);
 
         return newAccessToken;

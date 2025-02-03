@@ -1,23 +1,17 @@
 package com.hmws.usermgmt.controller;
 
-import com.hmws.global.authentication.TokenProvider;
+import com.hmws.global.authentication.utils.TokenProvider;
 import com.hmws.personnel_info.dto.UserRegistrationRequestDto;
-import com.hmws.portal_log_in_records.domain.PortalLogInRecord;
-import com.hmws.portal_log_in_records.dto.PortalLoginRecordDto;
-import com.hmws.usermgmt.domain.UserData;
 import com.hmws.usermgmt.dto.LogInRequestDto;
 import com.hmws.usermgmt.dto.UserDataDto;
 import com.hmws.usermgmt.service.UserDataService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;

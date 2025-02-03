@@ -5,7 +5,7 @@ import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSessionService;
-import com.hmws.global.authentication.UserDetailsImpl;
+import com.hmws.global.authentication.utils.UserDetailsImpl;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.authentication.dto.LogInResponse;
 import com.hmws.global.authentication.service.AuthService;
@@ -40,6 +40,18 @@ public class StoreFrontSessionController {
                     request.getPassword(),
                     request.isSaveCredentials()
             );
+
+            log.info("authResponse result {}", authResponse.getResult());
+            log.info("authResponse message {}", authResponse.getMessage());
+
+            // 아이디 혹은 비밀번호가 틀렸을 경우
+            if ("error".equals(authResponse.getResult()) && "Incorrect user name or password".equals(authResponse.getMessage())) {
+                return ResponseEntity.ok(Map.of(
+                        "success", false,
+                        "result", "Incorrect user name or password",
+                        "message", "잘못된 사용자 이름 또는 비밀번호입니다."
+                ));
+            }
 
             // 비밀번호 변경이 필요한 경우
             if ("update-credentials".equals(authResponse.getResult())) {

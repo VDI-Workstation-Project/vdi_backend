@@ -1,9 +1,8 @@
-package com.hmws.global.authentication;
+package com.hmws.global.authentication.utils;
 
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.usermgmt.constant.UserRole;
 import com.hmws.usermgmt.constant.UserType;
-import com.hmws.usermgmt.domain.UserData;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

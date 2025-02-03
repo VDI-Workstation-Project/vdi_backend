@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
@@ -154,6 +155,21 @@ public class StoreFrontLogInService {
             NodeList errorNodes = document.getElementsByTagName("LogMessage");
             if (errorNodes.getLength() > 0) {
                 authResponse.setMessage(errorNodes.item(0).getTextContent());
+            }
+
+            NodeList errorLabels = document.getElementsByTagName("Label");
+            for (int i = 0; i < errorLabels.getLength(); i++) {
+                Element label = (Element) errorLabels.item(i);
+                NodeList typeNodes = label.getElementsByTagName("Type");
+                NodeList textNodes = label.getElementsByTagName("Text");
+
+                if (typeNodes.getLength() > 0 && "error".equals(typeNodes.item(0).getTextContent()) &&
+                textNodes.getLength() > 0) {
+                    String errorMessage = textNodes.item(0).getTextContent();
+                    authResponse.setMessage(errorMessage);
+                    authResponse.setResult("error");
+                    break;
+                }
             }
 
             return authResponse;

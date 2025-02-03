@@ -1,9 +1,9 @@
 package com.hmws.global.authentication.controller;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
-import com.hmws.global.authentication.TokenProvider;
-import com.hmws.global.authentication.domain.RefreshToken;
-import com.hmws.global.authentication.repository.RefreshTokenRepository;
+import com.hmws.global.authentication.dto.RedisRefreshToken;
+import com.hmws.global.authentication.repository.RedisRefreshTokenRepository;
+import com.hmws.global.authentication.utils.TokenProvider;
 import com.hmws.global.exception.ErrorResponse;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +21,7 @@ import java.util.Map;
 public class AuthController {
 
     private final TokenProvider tokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisRefreshTokenRepository refreshTokenRepository;
     private final StoreFrontLogInService storeFrontLogInService;
 
     @PostMapping("/refresh")
@@ -34,7 +34,7 @@ public class AuthController {
                         .body(new ErrorResponse(401, "Invalid refresh Token"));
             }
 
-            RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
+            RedisRefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
                     .orElseThrow(() -> new RuntimeException("Refresh Token Not Found"));
 
             String newAccessToken = tokenProvider.refreshAccessToken(storedToken.getUsername());

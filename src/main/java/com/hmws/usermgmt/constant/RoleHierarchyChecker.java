@@ -1,6 +1,6 @@
 package com.hmws.usermgmt.constant;
 
-import com.hmws.global.authentication.UserDetailsImpl;
+import com.hmws.global.authentication.utils.UserDetailsImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 

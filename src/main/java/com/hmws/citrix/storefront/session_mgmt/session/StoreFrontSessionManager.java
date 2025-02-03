@@ -1,9 +1,10 @@
 package com.hmws.citrix.storefront.session_mgmt.session;
 
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
-import com.hmws.global.authentication.TokenProvider;
+import com.hmws.global.authentication.dto.RedisRefreshToken;
+import com.hmws.global.authentication.repository.RedisRefreshTokenRepository;
+import com.hmws.global.authentication.utils.TokenProvider;
 import com.hmws.global.authentication.dto.AuthUserDto;
-import com.hmws.global.authentication.repository.RefreshTokenRepository;
 import com.hmws.usermgmt.domain.UserData;
 import com.hmws.usermgmt.repository.UserDataRepository;
 import io.jsonwebtoken.Claims;
@@ -19,7 +20,7 @@ public class StoreFrontSessionManager {
 
     private final StoreFrontLogInService storeFrontLogInService;
     private final TokenProvider tokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisRefreshTokenRepository refreshTokenRepository;
     private final UserDataRepository userDataRepository;
 
     @Scheduled(fixedRate = 3300000) // 55분
@@ -53,12 +54,19 @@ public class StoreFrontSessionManager {
                             .build();
 
                     String newAccessToken = tokenProvider.generateToken(authUser);
-                    refreshToken.updateAccessToken(newAccessToken);
-                    refreshTokenRepository.save(refreshToken);
+
+                    RedisRefreshToken updatedToken = RedisRefreshToken.builder()
+                            .username(username)
+                            .token(refreshToken.getToken())
+                            .currentAccessToken(newAccessToken)
+                            .expiryDate(refreshToken.getExpiryDate())
+                            .build();
+
+                    refreshTokenRepository.save(updatedToken);
                     log.info("Successfully refreshed session for user: {}", username);
 
                 } else {
-                    refreshTokenRepository.delete(refreshToken);
+                    refreshTokenRepository.deleteByUsername(username);
                     log.warn("Session expired for user: {}", refreshToken.getUsername());
                 }
 

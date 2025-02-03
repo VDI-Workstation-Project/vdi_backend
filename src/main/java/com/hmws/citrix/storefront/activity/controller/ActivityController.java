@@ -1,7 +1,7 @@
 package com.hmws.citrix.storefront.activity.controller;
 
 import com.hmws.citrix.storefront.activity.service.ActivityService;
-import com.hmws.global.authentication.UserDetailsImpl;
+import com.hmws.global.authentication.utils.UserDetailsImpl;
 import com.hmws.global.authentication.dto.AuthUserDto;
 import com.hmws.global.exception.ErrorResponse;
 import lombok.RequiredArgsConstructor;
