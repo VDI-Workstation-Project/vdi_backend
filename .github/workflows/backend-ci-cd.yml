@@ -61,7 +61,7 @@ jobs:
       - name: Update image tag in deployment
         run: |
           cd k8s-manifests/backend
-          sed -i "s|devhehexd/backend:.*|devhehexd/backend:${{ env.BUILD_VERSION }}|" backend-deployment.yaml
+          sed -i "s|image: devhehexd/backend:.*|image: devhehexd/backend:test-${{ env.BUILD_VERSION }}|" backend-deployment.yaml
 
       - name: Verify manifest files
         run: |
