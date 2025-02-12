@@ -3,7 +3,7 @@ name: Backend CI/CD
 
 on:
   push:
-    branches: [ main ]  # ⭐ 원하는 브랜치명으로 변경
+    branches: [ main ]
     paths:
       - 'src/**'
       - 'build.gradle'
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout k8s-manifests repo
         uses: actions/checkout@v3
         with:
-          repository: https://github.com/VDI-Workstation-Project/k8s-manifests.git
+          repository: VDI-Workstation-Project/k8s-manifests
           token: ${{ secrets.PAT_TOKEN }}
           path: k8s-manifests
 
