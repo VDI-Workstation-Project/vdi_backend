@@ -17,3 +17,5 @@ ENTRYPOINT ["java", \
             "-Dspring.profiles.active=prod", \
             "-Dserver.port=8081", \
             "app.jar"]
+
+# Trigger CI/CD pipeline
