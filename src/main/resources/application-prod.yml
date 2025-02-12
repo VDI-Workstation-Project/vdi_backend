@@ -1,0 +1,77 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: backend
+
+  security:
+    basic:
+      enabled: false
+
+  jpa:
+    generate-ddl: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: dbo
+    database-platform: org.hibernate.dialect.SQLServerDialect
+
+  datasource:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: jdbc:sqlserver://${MAIN_SERVER_IP}:1433;databaseName=hmdb;useUnicode=true;characterEncoding=UTF-8;integratedSecurity=false;encrypt=true;trustServerCertificate=true;
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  ldap:
+    urls: ldaps://${LDAP_HOST}:636
+    base: ${LDAP_BASE}
+    username: ${LDAP_USERNAME}
+    password: ${LDAP_PASSWORD}
+    allowed-networks: ${ALLOWED_NETWORKS}
+    ssl:
+      enabled: true
+      trust-all: true
+
+citrix:
+  storefront:
+    server:
+      ip: ${STOREFRONT_SERVER_IP}
+      base-url: http://${STOREFRONT_SERVER_IP}/Citrix/hmstoreWeb
+
+ad:
+  default:
+    password: ${AD_DEFAULT_PASSWORD}
+    email-domain: ${AD_EMAIL_DOMAIN}
+  userScript:
+    path: ${AD_USER_SCRIPT_PATH}
+  addVmToAdScript:
+    path: ${AD_VM_SCRIPT_PATH}
+  securityScript:
+    path: ${AD_SECURITY_SCRIPT_PATH}
+  baseVmxTemplate:
+    path: ${AD_VMX_TEMPLATE_PATH}
+  vmCreatedIn:
+    path: ${AD_VM_PATH}
+  vmRun:
+    path: ${VMRUN_PATH}
+  server:
+    ip: ${MAIN_SERVER_IP}
+  admin:
+    username: ${AD_ADMIN_USERNAME}
+    userInteractive: ${AD_ADMIN_INTERACTIVE}
+    password: ${AD_ADMIN_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-time: ${JWT_EXPIRATION_TIME}
+  refresh-token:
+    expiration-time: ${JWT_REFRESH_EXPIRATION_TIME}
