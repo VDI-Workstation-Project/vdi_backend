@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      nodeSelector:
+        role: backend
+      containers:
+        - name: backend
+          image: devhehexd/backend:test
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              memory: "512Mi"   # 프론트엔드의 2배
+              cpu: "1000m"      # 1 코어
+            limits:
+              memory: "1Gi"     # 프론트엔드의 2배
+              cpu: "2000m"      # 2 코어
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: backend
+spec:
+  type: LoadBalancer
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081

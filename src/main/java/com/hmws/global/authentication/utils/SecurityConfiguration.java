@@ -51,10 +51,10 @@ public class SecurityConfiguration {
                         auth.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
                                 .requestMatchers("/", "/createAccount", "/login", "/api/storefront/login", "/api/storefront/change-password").permitAll()
                                 // 관리자이면서 인턴 이상만 접근 가능
-                                .requestMatchers("/admin/**").access(new WebExpressionAuthorizationManager(
+                                .requestMatchers("/user/dashboard").access(new WebExpressionAuthorizationManager(
                                         "hasRole('ADMIN') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
                                 // 사용자이면서 인턴 이상만 접근 가능
-                                .requestMatchers("/user/**").access(new WebExpressionAuthorizationManager(
+                                .requestMatchers("/user/mainpage").access(new WebExpressionAuthorizationManager(
                                         "hasRole('USER') and @roleHierarchyChecker.isAboveOrEqual(authentication, 'INTERN')"))
                                 .anyRequest().authenticated())
                 .addFilterBefore((new JwtAuthenticationFilter(tokenProvider, storeFrontLogInService, redisRefreshTokenRepository)),

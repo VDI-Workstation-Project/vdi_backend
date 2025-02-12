@@ -1,5 +1,6 @@
 package com.hmws.global.exception;
 
+import com.hmws.citrix.storefront.session_mgmt.exception.StoreFrontSystemException;
 import com.hmws.personnel_info.domain.PersonnelNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -37,5 +38,17 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
 
+    }
+
+    @ExceptionHandler(StoreFrontSystemException.class)
+    public ResponseEntity<ErrorResponse> handleStoreFrontSystemException(StoreFrontSystemException e) {
+        log.error("StoreFront 시스템 오류", e);
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                e.getMessage()
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

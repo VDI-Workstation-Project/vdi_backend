@@ -1,8 +1,10 @@
 package com.hmws.citrix.storefront.session_mgmt.controller;
 
+import com.hmws.citrix.storefront.session_mgmt.constant.PasswordChangeResult;
 import com.hmws.citrix.storefront.session_mgmt.dto.PasswordChangeRequest;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontAuthResponse;
 import com.hmws.citrix.storefront.session_mgmt.dto.StoreFrontLogInRequest;
+import com.hmws.citrix.storefront.session_mgmt.service.PasswordChangeService;
 import com.hmws.citrix.storefront.session_mgmt.service.StoreFrontLogInService;
 import com.hmws.citrix.storefront.session_mgmt.session.StoreFrontSessionService;
 import com.hmws.global.authentication.utils.UserDetailsImpl;
@@ -28,6 +30,7 @@ import java.util.Map;
 public class StoreFrontSessionController {
 
     private final StoreFrontLogInService storeFrontLogInService;
+    private final PasswordChangeService passwordChangeService;
     private final StoreFrontSessionService sessionService;
     private final AuthService authService;
 
@@ -111,8 +114,6 @@ public class StoreFrontSessionController {
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody PasswordChangeRequest request) {
 
-        log.info("change-password entrance");
-
         try {
 
             if (sessionService.getSession(request.getSessionId()) == null) {
@@ -122,23 +123,10 @@ public class StoreFrontSessionController {
                                 "No active session found"
                         ));
             }
-            StoreFrontAuthResponse authResponse = storeFrontLogInService.changePassword(request);
 
-            if ("success".equals(authResponse.getResult())) {
-                return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "message", "비밀번호가 성공적으로 변경되었습니다."
-                ));
+            PasswordChangeResult result = passwordChangeService.changePassword(request);
 
-            } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse(
-                                HttpStatus.BAD_REQUEST.value(),
-                                authResponse.getMessage() != null ?
-                                        authResponse.getMessage() :
-                                        "비밀번호 변경에 실패했습니다."
-                        ));
-            }
+            return ResponseEntity.ok(result);
 
         } catch (Exception e) {
             log.error("Password change failed", e);

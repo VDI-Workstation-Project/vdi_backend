@@ -35,8 +35,6 @@ public class StoreFrontLogInService {
     private final RestTemplate restTemplate;
     private final StoreFrontSessionService sessionService;
 
-    private static final ThreadLocal<StoreFrontSession> citrixSession = new ThreadLocal<>();
-
     @Transactional
     public StoreFrontAuthResponse storeFrontLogin(String username, String password, boolean saveCredentials) {
 
@@ -426,9 +424,25 @@ public class StoreFrontLogInService {
             }
 
             // 에러 메시지나 확인 메시지 파싱
-            NodeList textNodes = document.getElementsByTagName("Text");
-            if (textNodes.getLength() > 0) {
-                authResponse.setMessage(textNodes.item(0).getTextContent());
+            NodeList errorNodes = document.getElementsByTagName("LogMessage");
+            if (errorNodes.getLength() > 0) {
+                authResponse.setMessage(errorNodes.item(0).getTextContent());
+            }
+
+            // OldPassword, NewPassword가 일치하지 않는 에러
+            NodeList errorLabels = document.getElementsByTagName("Label");
+            for (int i = 0; i < errorLabels.getLength(); i++) {
+                Element label = (Element) errorLabels.item(i);
+                NodeList typeNodesForError = label.getElementsByTagName("Type");
+                NodeList textNodesForError = label.getElementsByTagName("Text");
+
+                if (typeNodesForError.getLength() > 0 && "error".equals(typeNodesForError.item(0).getTextContent()) &&
+                        textNodesForError.getLength() > 0) {
+                    String errorMessage = textNodesForError.item(0).getTextContent();
+                    authResponse.setMessage(errorMessage);
+                    authResponse.setResult("error");
+                    break;
+                }
             }
 
             log.info("authResponse httpStatus: {}", authResponse.getHttpStatus());
