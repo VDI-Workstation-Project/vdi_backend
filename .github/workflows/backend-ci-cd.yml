@@ -1,13 +1,14 @@
-# backend/.github/workflows/ci-cd.yml
-name: Backend CI/CD
+# .github/workflows/ci.yml
+name: Backend CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'src/**'
-      - 'build.gradle'
-      - 'Dockerfile'
+      - "src/**"
+      - "build.gradle"
+      - "Dockerfile"
+      - "helm/**"
 
 jobs:
   build:
@@ -19,12 +20,9 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
           cache: gradle
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
 
       - name: Build with Gradle
         run: ./gradlew build -x test
@@ -47,10 +45,6 @@ jobs:
           push: true
           tags: devhehexd/backend:test-${{ env.BUILD_VERSION }}
 
-  update-manifests:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Checkout k8s-manifests repo
         uses: actions/checkout@v3
         with:
@@ -58,32 +52,18 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           path: k8s-manifests
 
-      - name: Update image tag in deployment
+      - name: Update Helm values
         run: |
-          cd k8s-manifests/backend
-          sed -i 's|image: devhehexd/backend:.*$|image: devhehexd/backend:test-${{ BUILD_VERSION }}|' backend-deployment.yaml
+          cd k8s-manifests/backend/helm
+          yq e ".image.tag = \"test-${BUILD_VERSION}\"" -i values.yaml
 
-      - name: Verify manifest files
-        run: |
-          cd k8s-manifests/backend
-          if [ ! -f backend-configmap.yaml ] || [ ! -f backend-secret.yaml ] || [ ! -f backend-deployment.yaml ] || [ ! -f backend-service.yaml ]; then
-            echo "Missing required manifest files"
-            exit 1
-          fi
-
-      - name: Commit and push changes with ordered list
+      - name: Commit and push changes
         run: |
           cd k8s-manifests
-          echo "Manifest application order:" > backend/README.md
-          echo "1. backend-configmap.yaml" >> backend/README.md
-          echo "2. backend-secret.yaml" >> backend/README.md
-          echo "3. backend-deployment.yaml" >> backend/README.md
-          echo "4. backend-service.yaml" >> backend/README.md
-          
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
           git add .
-          git commit -m "Update backend image to test-${{ BUILD_VERSION }} and document deployment order"
+          git commit -m "chore: update backend image to test-${BUILD_VERSION}"
           git push
 
 env:
