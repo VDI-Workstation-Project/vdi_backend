@@ -47,6 +47,22 @@ spring:
       enabled: true
       trust-all: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
 logging:
   level:
     com.hmws: DEBUG
