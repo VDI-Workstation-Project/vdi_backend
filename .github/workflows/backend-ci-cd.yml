@@ -7,7 +7,7 @@ on:
     paths:
       - "src/**"
       - "build.gradle"
-      - "Dockerfile"
+      - "docker/**"
       - "helm/**"
 
 jobs:
@@ -48,6 +48,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: docker/Dockerfile
           push: true
           tags: devhehexd/backend:test-${{ env.BUILD_VERSION }}
 
