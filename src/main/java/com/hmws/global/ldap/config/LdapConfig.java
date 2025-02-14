@@ -12,6 +12,7 @@ import org.springframework.ldap.core.support.LdapContextSource;
 import javax.naming.Context;
 import javax.naming.directory.DirContext;
 import java.net.InetAddress;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,7 +63,8 @@ public class LdapConfig {
 
         // Java Home 경로를 이용한 키스토어 설정
         String javaHome = System.getProperty("java.home");
-        String trustStorePath = javaHome + "\\lib\\security\\cacerts";
+        // 수정된 코드 (Paths.get 사용)
+        String trustStorePath = Paths.get(javaHome, "lib", "security", "cacerts").toString();
 
         log.info("Using trustStore path: {}", trustStorePath);
 
