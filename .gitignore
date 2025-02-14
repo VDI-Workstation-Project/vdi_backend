@@ -38,6 +38,9 @@ out/
 
 ### Application Properties ###
 /src/main/resources/application.yml
+/src/main/resources/application.yml.bakg
 /src/main/resources/application.yaml
+/src/main/resources/application.yaml.bak
 /src/main/resources/application.properties
+/src/main/resources/application.properties.bak
 
